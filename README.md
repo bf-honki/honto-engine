@@ -1,8 +1,9 @@
 # HonTo Engine
 
-`HonTo Engine` is a small C++ 2D game-engine starter designed to grow toward a Unity, Godot, or Unreal-style workflow for 2D projects.
+`HonTo Engine` is a C++ 2D game-engine starter designed to grow toward a Unity, Godot, cocos2d-x, or Unreal-style workflow for code-first 2D projects.
 
 Detailed Korean guide: `docs/HONTO_ENGINE_GUIDE_KO.md`
+Source structure guide: `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
 
 This version now covers the core runtime features most people expect when prototyping a 2D engine:
 
@@ -14,6 +15,8 @@ This version now covers the core runtime features most people expect when protot
 - keyboard and mouse input
 - level loading from `.honto`, HonTo JSON, and Tiled-style JSON
 - a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, button clicks, JSON/Tiled loading, audio mixer controls, multiverse window travel, and a DOOM-style 2.5D scene with doors, fog, sprites, a weapon overlay, and a minimap
+- installable CMake package support so other developers can use the engine on a different machine with `find_package(HonToEngine CONFIG REQUIRED)`
+- a reusable starter template and standalone quickstart example for external game projects
 
 ## Why this structure
 
@@ -48,6 +51,46 @@ On single-config generators like Ninja:
 ```powershell
 .\build\honto_sandbox.exe
 ```
+
+## Install As An SDK
+
+You can install the engine as a reusable SDK for another machine or another game project:
+
+```powershell
+.\scripts\Build-HonToSdk.ps1 -InstallRoot C:\HonToSDK
+```
+
+That installs headers, the engine library, CMake package files, docs, templates, and example projects.
+
+After that, another project can use:
+
+```cmake
+find_package(HonToEngine CONFIG REQUIRED)
+target_link_libraries(MyGame PRIVATE HonTo::Engine)
+```
+
+When configuring that game project, point CMake at the installed SDK:
+
+```powershell
+cmake -S . -B build -DCMAKE_PREFIX_PATH="C:/HonToSDK"
+```
+
+If the target machine enforces Smart App Control, you can sign generated game executables during the build:
+
+```powershell
+cmake -S . -B build -DCMAKE_PREFIX_PATH="C:/HonToSDK" -DHONTO_SIGN_CERT_SHA1="YOUR_CERT_SHA1"
+cmake --build build --config Release
+```
+
+## Create A New Game Project
+
+You can generate a fresh external project from the starter template:
+
+```powershell
+.\scripts\New-HonToProject.ps1 -ProjectName MyGame -DestinationPath C:\Games
+```
+
+This creates a new buildable game project under `C:\Games\MyGame`.
 
 ## Visual Studio
 
@@ -97,6 +140,9 @@ To remove the local development certificate again:
 - `engine/include/honto`: public engine API headers
 - `engine/src`: engine implementation
 - `sandbox/src/main.cpp`: example game built on the engine
+- `examples/quickstart`: standalone example project for installed SDK usage
+- `templates/HonToStarter`: starter project for external users
+- `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`: separate source explanation file
 
 ## Easy code-first API
 

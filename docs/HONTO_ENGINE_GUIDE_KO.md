@@ -19,7 +19,39 @@
 
 이번 버전은 Unity, Godot, cocos2d-x, Unreal의 공통 핵심 축인 `장면`, `카메라`, `에셋`, `애니메이션`, `전환`, `윈도우`, `2D/2.5D 확장성`을 우선 구현한 상태입니다.
 
+소스 구조를 코드 안 주석 대신 따로 읽고 싶다면 `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`를 보면 됩니다.
+
 ## 현재 가능한 것
+
+### 0. 다른 컴퓨터 사용자가 엔진을 가져가서 자기 게임 만들기
+
+이제 엔진은 설치형 SDK처럼 쓸 수 있습니다.
+
+```powershell
+.\scripts\Build-HonToSdk.ps1 -InstallRoot C:\HonToSDK
+```
+
+그 다음 새 게임 프로젝트를 바로 만들 수 있습니다.
+
+```powershell
+.\scripts\New-HonToProject.ps1 -ProjectName MyGame -DestinationPath C:\Games
+```
+
+생성된 프로젝트는 아래처럼 빌드합니다.
+
+```powershell
+cmake -S . -B build -DCMAKE_PREFIX_PATH="C:/HonToSDK"
+cmake --build build --config Release
+```
+
+Windows에서 Smart App Control이 켜져 있으면 아래처럼 인증서 지문을 같이 넘겨서 실행 파일 서명도 붙일 수 있습니다.
+
+```powershell
+cmake -S . -B build -DCMAKE_PREFIX_PATH="C:/HonToSDK" -DHONTO_SIGN_CERT_SHA1="YOUR_CERT_SHA1"
+cmake --build build --config Release
+```
+
+이 흐름으로 다른 컴퓨터의 다른 사용자도 SDK를 설치한 뒤 자기 게임을 만들 수 있습니다.
 
 ### 1. 코드형 장면 구성
 
@@ -332,6 +364,12 @@ raycast.hontoMap({
   - 소프트웨어 렌더러, 카메라, 알파 블렌딩, 텍스처 샘플링
 - `sandbox/src/main.cpp`
   - 실제 예제 게임
+- `examples/quickstart/src/main.cpp`
+  - 설치형 SDK 기준의 외부 프로젝트 예제
+- `templates/HonToStarter/src/main.cpp`
+  - 다른 사용자가 자기 게임을 시작할 기본 템플릿
+- `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
+  - 코드 안 주석 대신 따로 읽는 소스 구조 설명서
 
 ## 내부 구조
 
