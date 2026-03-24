@@ -3,6 +3,7 @@
 #include "honto/Application.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace honto
@@ -277,11 +278,59 @@ namespace honto
         return m_Texture;
     }
 
+    void Sprite::SetTextureRegion(const TextureRegion& region)
+    {
+        m_TextureRegion = region;
+        m_UsesTextureRegion = region.IsValid();
+    }
+
+    TextureRegion Sprite::GetTextureRegion() const
+    {
+        return m_TextureRegion;
+    }
+
+    void Sprite::ClearTextureRegion()
+    {
+        m_TextureRegion = {};
+        m_UsesTextureRegion = false;
+    }
+
+    bool Sprite::HasTextureRegion() const
+    {
+        return m_UsesTextureRegion;
+    }
+
+    bool Sprite::SetTextureFrame(int frameIndex, int frameWidth, int frameHeight, int columns)
+    {
+        if (m_Texture == nullptr || !m_Texture->IsValid() || frameIndex < 0 || frameWidth <= 0 || frameHeight <= 0)
+        {
+            return false;
+        }
+
+        const int safeColumns = std::max(1, columns <= 0 ? (m_Texture->Width() / frameWidth) : columns);
+        const int frameX = (frameIndex % safeColumns) * frameWidth;
+        const int frameY = (frameIndex / safeColumns) * frameHeight;
+        if (frameX < 0 || frameY < 0 || frameX + frameWidth > m_Texture->Width() || frameY + frameHeight > m_Texture->Height())
+        {
+            return false;
+        }
+
+        SetTextureRegion({ frameX, frameY, frameWidth, frameHeight });
+        return true;
+    }
+
     void Sprite::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
     {
         if (m_Texture != nullptr && m_Texture->IsValid())
         {
-            renderer.DrawTexturedRect(worldPosition, GetContentSize() * worldScale, *m_Texture, m_Color);
+            if (m_UsesTextureRegion)
+            {
+                renderer.DrawTexturedRectRegion(worldPosition, GetContentSize() * worldScale, *m_Texture, m_TextureRegion, m_Color);
+            }
+            else
+            {
+                renderer.DrawTexturedRect(worldPosition, GetContentSize() * worldScale, *m_Texture, m_Color);
+            }
             return;
         }
 

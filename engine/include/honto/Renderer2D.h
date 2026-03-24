@@ -8,6 +8,7 @@
 namespace honto
 {
     class Texture;
+    struct TextureRegion;
 
     class Renderer2D
     {
@@ -19,6 +20,14 @@ namespace honto
         void DrawFilledRect(const Vec2& position, const Vec2& size, Color color, bool useCamera = true);
         void DrawRectOutline(const Vec2& position, const Vec2& size, Color color, int thickness = 1, bool useCamera = true);
         void DrawTexturedRect(const Vec2& position, const Vec2& size, const Texture& texture, Color tint = { 255, 255, 255, 255 }, bool useCamera = true);
+        void DrawTexturedRectRegion(
+            const Vec2& position,
+            const Vec2& size,
+            const Texture& texture,
+            const TextureRegion& region,
+            Color tint = { 255, 255, 255, 255 },
+            bool useCamera = true
+        );
         void DrawTexturedColumn(
             int x,
             float top,

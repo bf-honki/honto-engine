@@ -132,6 +132,37 @@ namespace honto
         return m_Pixels[static_cast<std::size_t>((y * m_Width) + x)];
     }
 
+    Color Texture::SampleRegion(float u, float v, const TextureRegion& region) const
+    {
+        if (!region.IsValid())
+        {
+            return Sample(u, v);
+        }
+
+        if (!IsValid())
+        {
+            return {};
+        }
+
+        const int startX = std::clamp(region.x, 0, m_Width - 1);
+        const int startY = std::clamp(region.y, 0, m_Height - 1);
+        const int endX = std::clamp(region.x + region.width, startX + 1, m_Width);
+        const int endY = std::clamp(region.y + region.height, startY + 1, m_Height);
+        const float wrappedU = u - std::floor(u);
+        const float wrappedV = v - std::floor(v);
+        const int x = std::clamp(
+            startX + static_cast<int>(wrappedU * static_cast<float>(endX - startX)),
+            startX,
+            endX - 1
+        );
+        const int y = std::clamp(
+            startY + static_cast<int>(wrappedV * static_cast<float>(endY - startY)),
+            startY,
+            endY - 1
+        );
+        return m_Pixels[static_cast<std::size_t>((y * m_Width) + x)];
+    }
+
     std::shared_ptr<Texture> Texture::LoadBmpShared(const std::string& path)
     {
         auto texture = std::make_shared<Texture>();
@@ -173,6 +204,68 @@ namespace honto
             {
                 const bool usePrimary = (((x / safeCellSize) + (y / safeCellSize)) % 2) == 0;
                 texture->m_Pixels[static_cast<std::size_t>((y * width) + x)] = usePrimary ? a : b;
+            }
+        }
+
+        return texture;
+    }
+
+    std::shared_ptr<Texture> Texture::CreateFrameSheet(
+        int frameWidth,
+        int frameHeight,
+        const std::vector<Color>& frameColors,
+        int columns
+    )
+    {
+        if (frameWidth <= 0 || frameHeight <= 0 || frameColors.empty())
+        {
+            return nullptr;
+        }
+
+        const int safeColumns = std::max(1, columns <= 0 ? static_cast<int>(frameColors.size()) : columns);
+        const int rows = static_cast<int>((frameColors.size() + static_cast<std::size_t>(safeColumns) - 1) / static_cast<std::size_t>(safeColumns));
+
+        auto texture = std::make_shared<Texture>();
+        if (texture == nullptr)
+        {
+            return nullptr;
+        }
+
+        texture->m_Width = frameWidth * safeColumns;
+        texture->m_Height = frameHeight * rows;
+        texture->m_Pixels.assign(static_cast<std::size_t>(texture->m_Width * texture->m_Height), Color { 0, 0, 0, 0 });
+
+        for (std::size_t frameIndex = 0; frameIndex < frameColors.size(); ++frameIndex)
+        {
+            const int column = static_cast<int>(frameIndex % static_cast<std::size_t>(safeColumns));
+            const int row = static_cast<int>(frameIndex / static_cast<std::size_t>(safeColumns));
+            const int originX = column * frameWidth;
+            const int originY = row * frameHeight;
+            const Color base = frameColors[frameIndex];
+
+            for (int y = 0; y < frameHeight; ++y)
+            {
+                for (int x = 0; x < frameWidth; ++x)
+                {
+                    const bool border = x == 0 || y == 0 || x == frameWidth - 1 || y == frameHeight - 1;
+                    const bool stripe = ((x / std::max(1, frameWidth / 4)) + static_cast<int>(frameIndex)) % 2 == 0;
+                    Color pixel = base;
+
+                    if (border)
+                    {
+                        pixel.r = static_cast<std::uint8_t>(std::min(255, static_cast<int>(base.r) + 24));
+                        pixel.g = static_cast<std::uint8_t>(std::min(255, static_cast<int>(base.g) + 24));
+                        pixel.b = static_cast<std::uint8_t>(std::min(255, static_cast<int>(base.b) + 24));
+                    }
+                    else if (stripe)
+                    {
+                        pixel.r = static_cast<std::uint8_t>(std::max(0, static_cast<int>(base.r) - 18));
+                        pixel.g = static_cast<std::uint8_t>(std::max(0, static_cast<int>(base.g) - 18));
+                        pixel.b = static_cast<std::uint8_t>(std::max(0, static_cast<int>(base.b) - 18));
+                    }
+
+                    texture->m_Pixels[static_cast<std::size_t>(((originY + y) * texture->m_Width) + (originX + x))] = pixel;
+                }
             }
         }
 

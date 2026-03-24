@@ -27,6 +27,9 @@
     <ClInclude Include="..\..\engine\include\honto\Application.h">
       <Filter>헤더 파일\Engine</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\engine\include\honto\Audio.h">
+      <Filter>헤더 파일\Engine</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\engine\include\honto\Color.h">
       <Filter>헤더 파일\Engine</Filter>
     </ClInclude>
@@ -60,6 +63,9 @@
     <ClInclude Include="..\..\engine\include\honto\SceneGraph.h">
       <Filter>헤더 파일\Engine</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\engine\include\honto\TileMap.h">
+      <Filter>헤더 파일\Engine</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\engine\include\honto\Texture.h">
       <Filter>헤더 파일\Engine</Filter>
     </ClInclude>
@@ -72,6 +78,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\engine\src\Application.cpp">
+      <Filter>소스 파일\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\src\Audio.cpp">
       <Filter>소스 파일\Engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\engine\src\Input.cpp">
@@ -87,6 +96,9 @@
       <Filter>소스 파일\Engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\engine\src\SceneGraph.cpp">
+      <Filter>소스 파일\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\src\TileMap.cpp">
       <Filter>소스 파일\Engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\engine\src\Texture.cpp">

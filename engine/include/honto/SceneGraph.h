@@ -131,12 +131,19 @@ namespace honto
         Color GetColor() const;
         void SetTexture(const std::shared_ptr<Texture>& texture);
         const std::shared_ptr<Texture>& GetTexture() const;
+        void SetTextureRegion(const TextureRegion& region);
+        TextureRegion GetTextureRegion() const;
+        void ClearTextureRegion();
+        bool HasTextureRegion() const;
+        bool SetTextureFrame(int frameIndex, int frameWidth, int frameHeight, int columns = 0);
 
         void Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale) override;
 
     private:
         Color m_Color { 255, 255, 255, 255 };
         std::shared_ptr<Texture> m_Texture;
+        TextureRegion m_TextureRegion {};
+        bool m_UsesTextureRegion = false;
     };
 
     class CodeScene : public Scene, public Node

@@ -1,10 +1,26 @@
 #include "honto/HonTo.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace
 {
+    const std::vector<std::string> kPlatformMap {
+        "........................................",
+        "........................................",
+        ".......................C................",
+        "........................................",
+        "......B.....................CCC.........",
+        "............####........................",
+        "....................#####...............",
+        "...####.........................##......",
+        "...............B........................",
+        ".........#####.............####.........",
+        "........................................",
+        "########################################"
+    };
+
     const std::vector<std::string> kDungeonMap {
         "##########",
         "#...A....#",
@@ -23,88 +39,127 @@ namespace
 
     void BuildPlatformScene(honto::hontoStage& stage)
     {
-        auto portalOpen = std::make_shared<bool>(false);
-        auto checkerTexture = honto::hontoCheckerTexture(
-            32,
-            32,
-            honto::hontoRGBA(40, 58, 98),
-            honto::hontoRGBA(86, 132, 212),
+        auto portalUnlocked = std::make_shared<bool>(false);
+        auto jumpGate = std::make_shared<bool>(false);
+
+        auto tileSheet = honto::hontoFrameSheetTexture(
+            16,
+            16,
+            {
+                honto::hontoRGBA(82, 126, 86),
+                honto::hontoRGBA(142, 102, 76),
+                honto::hontoRGBA(74, 110, 164),
+                honto::hontoRGBA(176, 186, 94)
+            },
             4
         );
 
-        honto::hontoPrint("Platform scene: A/D move, Space jump, Enter enters the 2.5D dungeon.");
+        auto playerSheet = honto::hontoFrameSheetTexture(
+            16,
+            16,
+            {
+                honto::hontoRGBA(92, 220, 128),
+                honto::hontoRGBA(112, 240, 148),
+                honto::hontoRGBA(84, 204, 122),
+                honto::hontoRGBA(126, 255, 164)
+            },
+            4
+        );
 
-        stage.hontoGravity(0.0f, 560.0f);
+        honto::hontoPrint("Platform scene: A/D move, Space jump, Enter opens the 2.5D dungeon after reaching the portal.");
+
         stage.hontoBackground(18, 22, 34);
-        stage.hontoFill("sky", 960.0f, 84.0f, honto::hontoRGBA(28, 40, 72)).hontoAt(0.0f, 0.0f).hontoLayer(1);
-        stage.hontoFill("ground", 960.0f, 26.0f, honto::hontoRGBA(58, 116, 70)).hontoAt(0.0f, 154.0f).hontoLayer(1);
+        stage.hontoGravity(0.0f, 760.0f);
 
-        auto player = stage.hontoBox("player", 16.0f, 16.0f, honto::hontoRGBA(98, 232, 132))
-            .hontoAt(36.0f, 42.0f)
+        stage.hontoFill("sky", 960.0f, 88.0f, honto::hontoRGBA(28, 40, 72)).hontoAt(0.0f, 0.0f).hontoLayer(0);
+        stage.hontoFill("haze", 960.0f, 104.0f, honto::hontoRGBA(44, 66, 112, 120)).hontoAt(0.0f, 52.0f).hontoLayer(0);
+
+        auto world = stage.hontoTileMap("world", kPlatformMap, 16.0f, 16.0f);
+        world.hontoAt(0.0f, 0.0f);
+        world.hontoLayer(1);
+        world.hontoTileTextureRegion('#', tileSheet, 0, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+        world.hontoTileTextureRegion('B', tileSheet, 16, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+        world.hontoTileTextureRegion('C', tileSheet, 32, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+
+        auto player = stage.hontoImage("player", playerSheet, 16.0f, 16.0f)
+            .hontoAt(36.0f, 40.0f)
             .hontoLayer(4)
             .hontoUseGravity()
-            .hontoGroundAt(138.0f)
-            .hontoMoveLeftRight(128.0f)
-            .hontoJumpWhenPressed(honto::hontoKey::Space, 255.0f);
+            .hontoCollideWithMap(world)
+            .hontoMoveLeftRight(132.0f)
+            .hontoJumpWhenPressed(honto::hontoKey::Space, 285.0f);
+
+        player.hontoAnimateFrames()
+            .hontoTexture(playerSheet)
+            .hontoFrameSize(16, 16)
+            .hontoFrames({ 0, 1, 2, 3, 2, 1 })
+            .hontoFPS(10.0f)
+            .hontoLoop()
+            .hontoPlay();
 
         stage.hontoCameraFollow(player, 1.0f);
 
-        auto crate = stage.hontoImage("crate", checkerTexture, 32.0f, 32.0f)
-            .hontoAt(220.0f, 122.0f)
-            .hontoLayer(3);
-        crate.hontoAnimate()
-            .hontoMoveTo(252.0f, 118.0f)
-            .hontoIn(1.4f)
-            .hontoPingPong()
-            .hontoLoop()
-            .hontoPlay();
-
         auto portal = stage.hontoChecker(
             "portal",
-            24.0f,
-            48.0f,
-            honto::hontoRGBA(250, 182, 84),
-            honto::hontoRGBA(122, 84, 255),
+            20.0f,
+            36.0f,
+            honto::hontoRGBA(250, 184, 80),
+            honto::hontoRGBA(112, 88, 255),
             3
-        )
-            .hontoAt(760.0f, 92.0f)
-            .hontoLayer(3);
+        );
+        portal.hontoAt(594.0f, 140.0f);
+        portal.hontoLayer(5);
         portal.hontoAnimate()
-            .hontoScaleTo(1.12f)
-            .hontoPaintTo(honto::hontoRGBA(255, 228, 160))
-            .hontoIn(0.9f)
+            .hontoScaleTo(1.08f)
+            .hontoPaintTo(honto::hontoRGBA(255, 236, 162))
+            .hontoIn(0.85f)
             .hontoPingPong()
             .hontoLoop()
             .hontoPlay();
 
-        stage.hontoEveryFrame(
-            [player, portal, crate, stage, portalOpen](float)
+        stage.hontoWhenPressed(
+            honto::hontoKey::Space,
+            [player, jumpGate, stage]()
             {
-                player.hontoPaint(player.hontoIsOnGround() ? honto::hontoRGBA(98, 232, 132) : honto::hontoRGBA(160, 255, 190));
-
-                if (player.hontoTouching(crate))
+                if (player.hontoIsOnGround() && !*jumpGate)
                 {
-                    player.hontoPaint(honto::hontoRGBA(255, 224, 120));
+                    *jumpGate = true;
+                    stage.hontoPlayTone(740, 70);
+                }
+            }
+        );
+
+        stage.hontoEveryFrame(
+            [player, portal, portalUnlocked, jumpGate, stage](float)
+            {
+                player.hontoPaint(player.hontoIsOnGround() ? honto::hontoRGBA(255, 255, 255) : honto::hontoRGBA(196, 220, 255));
+
+                if (player.hontoIsOnGround())
+                {
+                    *jumpGate = false;
                 }
 
-                if (player.hontoTouching(portal))
+                if (player.hontoTouching(portal) && !*portalUnlocked)
                 {
-                    *portalOpen = true;
+                    *portalUnlocked = true;
+                    stage.hontoPlayTone(980, 120);
+                    honto::hontoPrint("Portal unlocked. Press Enter.");
                 }
             }
         );
 
         stage.hontoWhenPressed(
             honto::hontoKey::Enter,
-            [stage, portalOpen]()
+            [stage, portalUnlocked]()
             {
-                if (!*portalOpen)
+                if (!*portalUnlocked)
                 {
-                    honto::hontoPrint("Reach the portal first to unlock the 2.5D dungeon.");
+                    stage.hontoPlayTone(220, 100);
+                    honto::hontoPrint("Reach the portal first.");
                     return;
                 }
 
-                honto::hontoPrint("Switching to the raycast dungeon.");
+                stage.hontoPlayTone(920, 110);
                 stage.hontoGoWithFade(BuildDoomScene, 0.7f);
             }
         );
@@ -159,41 +214,78 @@ namespace
             honto::hontoKey::Enter,
             [stage]()
             {
-                honto::hontoPrint("Returning to the platform scene.");
+                stage.hontoPlayTone(620, 100);
                 stage.hontoGoWithFade(BuildPlatformScene, 0.7f);
             }
         );
-
-        (void)raycast;
     }
 
     void BuildToolsWindow(honto::hontoStage& stage)
     {
-        auto texture = honto::hontoCheckerTexture(
-            48,
-            48,
-            honto::hontoRGBA(86, 236, 154),
-            honto::hontoRGBA(34, 88, 78),
-            6
+        auto previewSheet = honto::hontoFrameSheetTexture(
+            16,
+            16,
+            {
+                honto::hontoRGBA(122, 240, 172),
+                honto::hontoRGBA(88, 204, 148),
+                honto::hontoRGBA(68, 172, 132),
+                honto::hontoRGBA(140, 255, 196)
+            },
+            4
+        );
+
+        auto tileSheet = honto::hontoFrameSheetTexture(
+            16,
+            16,
+            {
+                honto::hontoRGBA(82, 126, 86),
+                honto::hontoRGBA(142, 102, 76),
+                honto::hontoRGBA(74, 110, 164)
+            },
+            3
         );
 
         stage.hontoBackground(20, 22, 30);
         stage.hontoOutline(228.0f, 122.0f, honto::hontoRGBA(74, 90, 114), 1).hontoAt(6.0f, 6.0f).hontoLayer(1);
 
-        auto panel = stage.hontoImage("panel", texture, 54.0f, 54.0f)
-            .hontoAt(30.0f, 30.0f)
-            .hontoLayer(2);
-        panel.hontoAnimate()
-            .hontoMoveTo(150.0f, 30.0f)
-            .hontoScaleTo(1.2f)
-            .hontoIn(1.0f)
+        auto previewMap = stage.hontoTileMap(
+            "preview_map",
+            {
+                "................",
+                "..BBB...........",
+                "......CCC.......",
+                "....####........",
+                "################"
+            },
+            12.0f,
+            12.0f
+        );
+        previewMap.hontoAt(12.0f, 64.0f);
+        previewMap.hontoLayer(2);
+        previewMap.hontoTileTextureRegion('#', tileSheet, 0, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+        previewMap.hontoTileTextureRegion('B', tileSheet, 16, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+        previewMap.hontoTileTextureRegion('C', tileSheet, 32, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+
+        auto scout = stage.hontoImage("scout", previewSheet, 26.0f, 26.0f)
+            .hontoAt(26.0f, 22.0f)
+            .hontoLayer(3);
+        scout.hontoAnimateFrames()
+            .hontoTexture(previewSheet)
+            .hontoFrameSize(16, 16)
+            .hontoFrames({ 0, 1, 2, 3, 2, 1 })
+            .hontoFPS(9.0f)
+            .hontoLoop()
+            .hontoPlay();
+        scout.hontoAnimate()
+            .hontoMoveTo(184.0f, 22.0f)
+            .hontoIn(1.2f)
             .hontoPingPong()
             .hontoLoop()
             .hontoPlay();
 
         auto pulse = stage.hontoBox("pulse", 18.0f, 18.0f, honto::hontoRGBA(250, 198, 98))
-            .hontoAt(108.0f, 88.0f)
-            .hontoLayer(3);
+            .hontoAt(108.0f, 38.0f)
+            .hontoLayer(4);
         pulse.hontoAnimate()
             .hontoScaleTo(1.8f)
             .hontoPaintTo(honto::hontoRGBA(255, 240, 170))

@@ -66,6 +66,18 @@ namespace honto
 
     void Renderer2D::DrawTexturedRect(const Vec2& position, const Vec2& size, const Texture& texture, Color tint, bool useCamera)
     {
+        DrawTexturedRectRegion(position, size, texture, {}, tint, useCamera);
+    }
+
+    void Renderer2D::DrawTexturedRectRegion(
+        const Vec2& position,
+        const Vec2& size,
+        const Texture& texture,
+        const TextureRegion& region,
+        Color tint,
+        bool useCamera
+    )
+    {
         if (!texture.IsValid())
         {
             DrawFilledRect(position, size, tint, useCamera);
@@ -88,7 +100,7 @@ namespace honto
             {
                 const float u = (static_cast<float>(x) - screenPosition.x) / safeWidth;
                 const float v = (static_cast<float>(y) - screenPosition.y) / safeHeight;
-                Color sample = texture.Sample(u, v);
+                Color sample = texture.SampleRegion(u, v, region);
                 sample.r = static_cast<std::uint8_t>((static_cast<std::uint32_t>(sample.r) * tint.r) / 255);
                 sample.g = static_cast<std::uint8_t>((static_cast<std::uint32_t>(sample.g) * tint.g) / 255);
                 sample.b = static_cast<std::uint8_t>((static_cast<std::uint32_t>(sample.b) * tint.b) / 255);

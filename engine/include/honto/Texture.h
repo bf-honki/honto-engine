@@ -9,6 +9,19 @@
 
 namespace honto
 {
+    struct TextureRegion
+    {
+        int x = 0;
+        int y = 0;
+        int width = 0;
+        int height = 0;
+
+        bool IsValid() const
+        {
+            return width > 0 && height > 0;
+        }
+    };
+
     class Texture
     {
     public:
@@ -30,6 +43,7 @@ namespace honto
         }
 
         Color Sample(float u, float v) const;
+        Color SampleRegion(float u, float v, const TextureRegion& region) const;
 
         static std::shared_ptr<Texture> LoadBmpShared(const std::string& path);
         static std::shared_ptr<Texture> CreateCheckerboard(
@@ -38,6 +52,12 @@ namespace honto
             Color a,
             Color b,
             int cellSize = 8
+        );
+        static std::shared_ptr<Texture> CreateFrameSheet(
+            int frameWidth,
+            int frameHeight,
+            const std::vector<Color>& frameColors,
+            int columns = 0
         );
 
     private:

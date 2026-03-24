@@ -112,7 +112,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -129,7 +129,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -144,7 +144,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -161,12 +161,13 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 
   <ItemGroup>
     <ClInclude Include="..\..\engine\include\honto\Application.h" />
+    <ClInclude Include="..\..\engine\include\honto\Audio.h" />
     <ClInclude Include="..\..\engine\include\honto\Color.h" />
     <ClInclude Include="..\..\engine\include\honto\Components.h" />
     <ClInclude Include="..\..\engine\include\honto\Easy.h" />
@@ -178,17 +179,20 @@
     <ClInclude Include="..\..\engine\include\honto\Renderer2D.h" />
     <ClInclude Include="..\..\engine\include\honto\Scene.h" />
     <ClInclude Include="..\..\engine\include\honto\SceneGraph.h" />
+    <ClInclude Include="..\..\engine\include\honto\TileMap.h" />
     <ClInclude Include="..\..\engine\include\honto\Texture.h" />
     <ClInclude Include="..\..\engine\include\honto\Transform2D.h" />
     <ClInclude Include="..\..\engine\include\honto\Window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\engine\src\Application.cpp" />
+    <ClCompile Include="..\..\engine\src\Audio.cpp" />
     <ClCompile Include="..\..\engine\src\Input.cpp" />
     <ClCompile Include="..\..\engine\src\Raycast.cpp" />
     <ClCompile Include="..\..\engine\src\Renderer2D.cpp" />
     <ClCompile Include="..\..\engine\src\Scene.cpp" />
     <ClCompile Include="..\..\engine\src\SceneGraph.cpp" />
+    <ClCompile Include="..\..\engine\src\TileMap.cpp" />
     <ClCompile Include="..\..\engine\src\Texture.cpp" />
     <ClCompile Include="..\..\engine\src\WindowWin32.cpp" />
     <ClCompile Include="..\..\sandbox\src\main.cpp" />

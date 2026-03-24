@@ -9,6 +9,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(HONTO_ENGINE_HEADERS
     engine/include/honto/Application.h
+    engine/include/honto/Audio.h
     engine/include/honto/Color.h
     engine/include/honto/Components.h
     engine/include/honto/Easy.h
@@ -20,6 +21,7 @@ set(HONTO_ENGINE_HEADERS
     engine/include/honto/Renderer2D.h
     engine/include/honto/Scene.h
     engine/include/honto/SceneGraph.h
+    engine/include/honto/TileMap.h
     engine/include/honto/Texture.h
     engine/include/honto/Transform2D.h
     engine/include/honto/Window.h
@@ -27,11 +29,13 @@ set(HONTO_ENGINE_HEADERS
 
 set(HONTO_ENGINE_SOURCES
     engine/src/Application.cpp
+    engine/src/Audio.cpp
     engine/src/Input.cpp
     engine/src/Raycast.cpp
     engine/src/Renderer2D.cpp
     engine/src/Scene.cpp
     engine/src/SceneGraph.cpp
+    engine/src/TileMap.cpp
     engine/src/Texture.cpp
     engine/src/WindowWin32.cpp
 )
@@ -57,6 +61,7 @@ target_compile_definitions(honto_engine PRIVATE
 target_link_libraries(honto_engine PUBLIC
     user32
     gdi32
+    winmm
 )
 
 if(MSVC)

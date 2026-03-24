@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Application.h"
+#include "Audio.h"
 #include "Color.h"
 #include "Components.h"
 #include "Easy.h"
@@ -11,5 +12,6 @@
 #include "Renderer2D.h"
 #include "Scene.h"
 #include "SceneGraph.h"
+#include "TileMap.h"
 #include "Texture.h"
 #include "Transform2D.h"

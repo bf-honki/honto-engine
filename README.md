@@ -10,13 +10,13 @@ This first version focuses on the foundation:
 - a software 2D renderer with a pixel backbuffer
 - scenes, entities, transforms, sprites, and simple rigid bodies
 - a cocos2d-x style code-first scene graph with nodes, layers, and sprites
-- a lambda-style "easy" API for gravity, animation, scene transitions, and multiple windows
+- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, audio, scene transitions, and multiple windows
 - keyboard input
-- a sandbox game that shows how another user would build a game on top of the engine
+- a sandbox game that shows 2D platforming, tile collisions, audio cues, and a DOOM-style 2.5D scene switch
 
 ## Why this structure
 
-If the goal is "other people can make games with it", the engine needs a stable runtime API first, then editor tooling, asset import, richer animation, tilemaps, audio, physics, and scripting.
+If the goal is "other people can make games with it", the engine needs a stable runtime API first, then editor tooling, asset import, richer animation, physics, UI, save formats, and scripting.
 
 This repository starts with the runtime layer so we can iterate safely.
 
@@ -137,13 +137,46 @@ int main()
                 stage.hontoBackground(24, 28, 40);
                 stage.hontoGravity(0.0f, 520.0f);
 
-                auto player = stage.hontoBox("player", 16.0f, 16.0f, honto::hontoRGBA(92, 220, 128))
+                auto world = stage.hontoTileMap(
+                    "world",
+                    {
+                        "....................",
+                        "......###...........",
+                        "..............####..",
+                        "####################"
+                    },
+                    16.0f,
+                    16.0f
+                );
+                world.hontoTile('#', honto::hontoRGBA(82, 126, 86), true, true);
+
+                auto sheet = honto::hontoFrameSheetTexture(
+                    16,
+                    16,
+                    {
+                        honto::hontoRGBA(92, 220, 128),
+                        honto::hontoRGBA(112, 240, 148),
+                        honto::hontoRGBA(84, 204, 122),
+                        honto::hontoRGBA(126, 255, 164)
+                    },
+                    4
+                );
+
+                auto player = stage.hontoImage("player", sheet, 16.0f, 16.0f)
                     .hontoAt(24.0f, 40.0f)
                     .hontoLayer(3)
                     .hontoUseGravity()
-                    .hontoGroundAt(136.0f)
+                    .hontoCollideWithMap(world)
                     .hontoMoveLeftRight(110.0f)
                     .hontoJumpWhenPressed(honto::hontoKey::Space, 230.0f);
+
+                player.hontoAnimateFrames()
+                    .hontoTexture(sheet)
+                    .hontoFrameSize(16, 16)
+                    .hontoFrames({ 0, 1, 2, 3, 2, 1 })
+                    .hontoFPS(10.0f)
+                    .hontoLoop()
+                    .hontoPlay();
 
                 auto goal = stage.hontoBox("goal", 20.0f, 32.0f, honto::hontoRGBA(240, 196, 64))
                     .hontoAt(278.0f, 104.0f)
@@ -161,6 +194,7 @@ int main()
                 {
                     if (player.hontoTouching(goal))
                     {
+                        stage.hontoPlayTone(880, 90);
                         stage.hontoGoWithFade([](honto::hontoStage& clear)
                         {
                             clear.hontoBackground(18, 22, 34);
@@ -176,12 +210,13 @@ int main()
 Useful helpers in this style:
 
 - `honto::hontoGame(...)`, `game.hontoWindow(...)`, `game.hontoOpenWindow(...)`
-- `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`
+- `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`, `stage.hontoTileMap(...)`
 - `actor.hontoAt(...)`, `actor.hontoMove(...)`, `actor.hontoPaint(...)`, `actor.hontoLayer(...)`
-- `actor.hontoUseGravity()`, `actor.hontoGroundAt(...)`, `actor.hontoJumpWhenPressed(...)`
+- `actor.hontoUseGravity()`, `actor.hontoCollideWithMap(...)`, `actor.hontoJumpWhenPressed(...)`
 - `actor.hontoAnimate().hontoMoveTo(...).hontoScaleTo(...).hontoPaintTo(...).hontoIn(...).hontoPingPong().hontoLoop().hontoPlay()`
+- `actor.hontoAnimateFrames().hontoTexture(...).hontoFrameSize(...).hontoFrames(...).hontoFPS(...).hontoLoop().hontoPlay()`
 - `stage.hontoEveryFrame(...)`, `stage.hontoWhenPressed(...)`, `stage.hontoFind("name")`
-- `stage.hontoGoWithFade(...)`, `honto::hontoFade(...)`
+- `stage.hontoPlayTone(...)`, `stage.hontoPlaySound(...)`, `stage.hontoGoWithFade(...)`, `honto::hontoFade(...)`
 
 If you prefer the more traditional engine style, the older scene-subclass API still works:
 
@@ -218,9 +253,9 @@ private:
 
 ## Next milestones
 
-1. sprite textures and image loading
-2. sprite-sheet animation and texture atlases
-3. camera, tilemap, and collision helpers
-4. audio
+1. PNG and richer asset import
+2. text and UI widgets
+3. save/load scene or level formats
+4. audio mixer and channels
 5. editor and project format
 6. scripting layer, such as Lua or C# embedding

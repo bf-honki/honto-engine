@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Application.h"
+#include "Audio.h"
 #include "Input.h"
 #include "Raycast.h"
 #include "SceneGraph.h"
+#include "TileMap.h"
 #include "Texture.h"
 
 #include <algorithm>
@@ -11,6 +13,7 @@
 #include <cstdint>
 #include <cmath>
 #include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -166,8 +169,10 @@ namespace HonTo
 
     class Actor;
     class Animation;
+    class FrameAnimation;
     class RaycastActor;
     class Stage;
+    class TileMapActor;
 
     inline std::shared_ptr<Texture> LoadTexture(const std::string& path)
     {
@@ -183,6 +188,36 @@ namespace HonTo
     )
     {
         return Texture::CreateCheckerboard(width, height, a, b, cellSize);
+    }
+
+    inline std::shared_ptr<Texture> FrameSheetTexture(
+        int frameWidth,
+        int frameHeight,
+        const std::vector<Color>& frameColors,
+        int columns = 0
+    )
+    {
+        return Texture::CreateFrameSheet(frameWidth, frameHeight, frameColors, columns);
+    }
+
+    inline bool PlaySound(const std::string& path, bool loop = false)
+    {
+        return honto::Audio::PlayWav(path, loop);
+    }
+
+    inline bool PlayAlias(const std::string& alias, bool loop = false)
+    {
+        return honto::Audio::PlayAlias(alias, loop);
+    }
+
+    inline void StopAudio()
+    {
+        honto::Audio::Stop();
+    }
+
+    inline void PlayTone(int frequency, int durationMs)
+    {
+        honto::Audio::PlayTone(frequency, durationMs);
     }
 
     template <typename Derived, typename TNode>
@@ -634,11 +669,13 @@ namespace HonTo
             float groundY = 0.0f;
             float groundBounce = 0.0f;
             bool onGround = false;
+            std::weak_ptr<honto::TileMap> collisionMap;
         };
 
         struct StageState
         {
             std::unordered_map<std::string, std::shared_ptr<ActorState>> namedActors;
+            std::unordered_map<std::string, std::shared_ptr<honto::TileMap>> namedTileMaps;
             std::vector<std::function<void(float)>> updates;
             HonTo::Scene* scene = nullptr;
             std::size_t nextAnonymousId = 1;
@@ -780,12 +817,7 @@ namespace HonTo
 
         const Actor& Move(const Vec2& delta) const
         {
-            if (const auto node = Node())
-            {
-                node->SetPosition(node->GetPosition() + delta);
-            }
-
-            return *this;
+            return ApplyMovement(delta);
         }
 
         const Actor& Size(float width, float height) const
@@ -891,6 +923,36 @@ namespace HonTo
             if (const auto sprite = std::dynamic_pointer_cast<honto::Sprite>(Node()))
             {
                 sprite->SetTexture(texture);
+            }
+
+            return *this;
+        }
+
+        const Actor& UseTextureRegion(int x, int y, int width, int height) const
+        {
+            if (const auto sprite = std::dynamic_pointer_cast<honto::Sprite>(Node()))
+            {
+                sprite->SetTextureRegion({ x, y, width, height });
+            }
+
+            return *this;
+        }
+
+        const Actor& ClearTextureRegion() const
+        {
+            if (const auto sprite = std::dynamic_pointer_cast<honto::Sprite>(Node()))
+            {
+                sprite->ClearTextureRegion();
+            }
+
+            return *this;
+        }
+
+        const Actor& UseTextureFrame(int frameIndex, int frameWidth, int frameHeight, int columns = 0) const
+        {
+            if (const auto sprite = std::dynamic_pointer_cast<honto::Sprite>(Node()))
+            {
+                sprite->SetTextureFrame(frameIndex, frameWidth, frameHeight, columns);
             }
 
             return *this;
@@ -1120,12 +1182,17 @@ namespace HonTo
                    myPosition.y + mySize.y > otherPosition.y;
         }
 
+        bool TouchingMap(const TileMapActor& map) const;
+
+        const Actor& CollideWithMap(const TileMapActor& map) const;
+
         std::shared_ptr<honto::Node> Share() const
         {
             return Node();
         }
 
         Animation Animate() const;
+        FrameAnimation AnimateFrames() const;
 
         const Actor& hontoAt(float x, float y) const
         {
@@ -1202,6 +1269,21 @@ namespace HonTo
             return UseTexture(texture);
         }
 
+        const Actor& hontoUseTextureRegion(int x, int y, int width, int height) const
+        {
+            return UseTextureRegion(x, y, width, height);
+        }
+
+        const Actor& hontoClearTextureRegion() const
+        {
+            return ClearTextureRegion();
+        }
+
+        const Actor& hontoUseTextureFrame(int frameIndex, int frameWidth, int frameHeight, int columns = 0) const
+        {
+            return UseTextureFrame(frameIndex, frameWidth, frameHeight, columns);
+        }
+
         const Actor& hontoThickness(int thickness) const
         {
             return Thickness(thickness);
@@ -1272,12 +1354,23 @@ namespace HonTo
             return Touching(other);
         }
 
+        bool hontoTouchingMap(const TileMapActor& map) const
+        {
+            return TouchingMap(map);
+        }
+
+        const Actor& hontoCollideWithMap(const TileMapActor& map) const
+        {
+            return CollideWithMap(map);
+        }
+
         bool hontoIsOnGround() const
         {
             return IsOnGround();
         }
 
         Animation hontoAnimate() const;
+        FrameAnimation hontoAnimateFrames() const;
 
     private:
         std::shared_ptr<honto::Node> Node() const
@@ -1298,6 +1391,51 @@ namespace HonTo
             }
 
             return m_State->stage.lock();
+        }
+
+        std::shared_ptr<honto::TileMap> LockCollisionMap() const
+        {
+            if (m_State == nullptr)
+            {
+                return nullptr;
+            }
+
+            return m_State->collisionMap.lock();
+        }
+
+        const Actor& ApplyMovement(const Vec2& delta) const
+        {
+            if (const auto node = Node())
+            {
+                if (const auto tileMap = LockCollisionMap())
+                {
+                    Vec2 position = node->GetPosition();
+                    Vec2 velocity = m_State != nullptr ? m_State->velocity : Vec2 {};
+                    bool collidedX = false;
+                    bool collidedY = false;
+                    bool onGround = m_State != nullptr ? m_State->onGround : false;
+
+                    tileMap->ResolveMovement(position, node->GetContentSize(), velocity, delta, collidedX, collidedY, onGround);
+                    node->SetPosition(position);
+
+                    if (m_State != nullptr)
+                    {
+                        m_State->velocity = velocity;
+                        m_State->onGround = (delta.y == 0.0f) ? m_State->onGround || onGround : onGround;
+                    }
+                }
+                else
+                {
+                    node->SetPosition(node->GetPosition() + delta);
+
+                    if (m_State != nullptr && delta.y < 0.0f)
+                    {
+                        m_State->onGround = false;
+                    }
+                }
+            }
+
+            return *this;
         }
 
         const Actor& EnsurePhysics() const
@@ -1326,10 +1464,10 @@ namespace HonTo
 
                     if (self.m_State->movesByVelocity || self.m_State->usesGravity)
                     {
-                        self.Move(self.m_State->velocity * deltaTime);
+                        self.ApplyMovement(self.m_State->velocity * deltaTime);
                     }
 
-                    if (self.m_State->hasGround)
+                    if (self.m_State->hasGround && self.LockCollisionMap() == nullptr)
                     {
                         Vec2 position = self.Position();
                         if (position.y >= self.m_State->groundY)
@@ -1607,6 +1745,430 @@ namespace HonTo
     inline Animation Actor::hontoAnimate() const
     {
         return Animate();
+    }
+
+    class FrameAnimation
+    {
+    public:
+        explicit FrameAnimation(Actor actor)
+            : m_Actor(std::move(actor))
+        {
+        }
+
+        FrameAnimation& Texture(const std::shared_ptr<honto::Texture>& texture)
+        {
+            m_Texture = texture;
+            return *this;
+        }
+
+        FrameAnimation& Texture(const std::string& path)
+        {
+            return Texture(LoadTexture(path));
+        }
+
+        FrameAnimation& FrameSize(int width, int height)
+        {
+            m_FrameWidth = std::max(1, width);
+            m_FrameHeight = std::max(1, height);
+            return *this;
+        }
+
+        FrameAnimation& Frames(const std::vector<int>& frames)
+        {
+            m_Frames = frames;
+            return *this;
+        }
+
+        FrameAnimation& Frames(std::initializer_list<int> frames)
+        {
+            m_Frames.assign(frames.begin(), frames.end());
+            return *this;
+        }
+
+        FrameAnimation& Range(int startFrame, int count)
+        {
+            m_Frames.clear();
+
+            for (int index = 0; index < count; ++index)
+            {
+                m_Frames.push_back(startFrame + index);
+            }
+
+            return *this;
+        }
+
+        FrameAnimation& Columns(int columns)
+        {
+            m_Columns = std::max(0, columns);
+            return *this;
+        }
+
+        FrameAnimation& FPS(float framesPerSecond)
+        {
+            m_Fps = std::max(1.0f, framesPerSecond);
+            return *this;
+        }
+
+        FrameAnimation& Loop(bool enabled = true)
+        {
+            m_Loop = enabled;
+            return *this;
+        }
+
+        FrameAnimation& PingPong(bool enabled = true)
+        {
+            m_PingPong = enabled;
+            return *this;
+        }
+
+        FrameAnimation& hontoTexture(const std::shared_ptr<honto::Texture>& texture)
+        {
+            return Texture(texture);
+        }
+
+        FrameAnimation& hontoTexture(const std::string& path)
+        {
+            return Texture(path);
+        }
+
+        FrameAnimation& hontoFrameSize(int width, int height)
+        {
+            return FrameSize(width, height);
+        }
+
+        FrameAnimation& hontoFrames(const std::vector<int>& frames)
+        {
+            return Frames(frames);
+        }
+
+        FrameAnimation& hontoFrames(std::initializer_list<int> frames)
+        {
+            return Frames(frames);
+        }
+
+        FrameAnimation& hontoRange(int startFrame, int count)
+        {
+            return Range(startFrame, count);
+        }
+
+        FrameAnimation& hontoColumns(int columns)
+        {
+            return Columns(columns);
+        }
+
+        FrameAnimation& hontoFPS(float framesPerSecond)
+        {
+            return FPS(framesPerSecond);
+        }
+
+        FrameAnimation& hontoLoop(bool enabled = true)
+        {
+            return Loop(enabled);
+        }
+
+        FrameAnimation& hontoPingPong(bool enabled = true)
+        {
+            return PingPong(enabled);
+        }
+
+        const Actor& Play() const
+        {
+            if (!m_Actor || m_FrameWidth <= 0 || m_FrameHeight <= 0)
+            {
+                return m_Actor;
+            }
+
+            if (m_Texture != nullptr)
+            {
+                m_Actor.UseTexture(m_Texture);
+            }
+
+            const std::vector<int> sequence = m_Frames;
+            if (sequence.empty())
+            {
+                return m_Actor;
+            }
+
+            m_Actor.UseTextureFrame(sequence.front(), m_FrameWidth, m_FrameHeight, m_Columns);
+
+            return m_Actor.OnUpdate(
+                [
+                    sequence,
+                    frameWidth = m_FrameWidth,
+                    frameHeight = m_FrameHeight,
+                    columns = m_Columns,
+                    fps = m_Fps,
+                    loops = m_Loop,
+                    pingPong = m_PingPong,
+                    elapsed = 0.0f,
+                    currentIndex = -1,
+                    finished = false
+                ](Actor& self, float deltaTime) mutable
+                {
+                    if (finished && !loops)
+                    {
+                        return;
+                    }
+
+                    elapsed += deltaTime;
+                    const int sequenceCount = static_cast<int>(sequence.size());
+                    const int cycleCount = pingPong && sequenceCount > 1 ? ((sequenceCount * 2) - 2) : sequenceCount;
+
+                    if (cycleCount <= 0)
+                    {
+                        return;
+                    }
+
+                    int cycleIndex = static_cast<int>(std::floor(elapsed * fps));
+                    if (loops)
+                    {
+                        cycleIndex %= cycleCount;
+                        if (cycleIndex < 0)
+                        {
+                            cycleIndex += cycleCount;
+                        }
+                    }
+                    else if (cycleIndex >= cycleCount)
+                    {
+                        cycleIndex = cycleCount - 1;
+                        finished = true;
+                    }
+
+                    int sequenceIndex = cycleIndex;
+                    if (pingPong && sequenceCount > 1 && cycleIndex >= sequenceCount)
+                    {
+                        sequenceIndex = (sequenceCount - 2) - (cycleIndex - sequenceCount);
+                    }
+
+                    sequenceIndex = std::clamp(sequenceIndex, 0, sequenceCount - 1);
+                    if (sequenceIndex == currentIndex)
+                    {
+                        return;
+                    }
+
+                    currentIndex = sequenceIndex;
+                    self.UseTextureFrame(sequence[static_cast<std::size_t>(sequenceIndex)], frameWidth, frameHeight, columns);
+                }
+            );
+        }
+
+        const Actor& hontoPlay() const
+        {
+            return Play();
+        }
+
+    private:
+        Actor m_Actor;
+        std::shared_ptr<honto::Texture> m_Texture;
+        std::vector<int> m_Frames;
+        int m_FrameWidth = 16;
+        int m_FrameHeight = 16;
+        int m_Columns = 0;
+        float m_Fps = 8.0f;
+        bool m_Loop = true;
+        bool m_PingPong = false;
+    };
+
+    inline FrameAnimation Actor::AnimateFrames() const
+    {
+        return FrameAnimation(*this);
+    }
+
+    inline FrameAnimation Actor::hontoAnimateFrames() const
+    {
+        return AnimateFrames();
+    }
+
+    class TileMapActor : public Actor
+    {
+    public:
+        TileMapActor() = default;
+        explicit TileMapActor(const Actor& actor)
+            : Actor(actor)
+        {
+        }
+
+        TileMapActor& Map(const std::vector<std::string>& map)
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetMap(map);
+            }
+
+            return *this;
+        }
+
+        TileMapActor& TileSize(float width, float height)
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetTileSize(width, height);
+            }
+
+            return *this;
+        }
+
+        TileMapActor& Tile(char tile, Color color, bool solid = false, bool visible = true)
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetTile(tile, color, solid, visible);
+            }
+
+            return *this;
+        }
+
+        TileMapActor& TileTexture(char tile, const std::shared_ptr<Texture>& texture, Color tint = RGBA(255, 255, 255), bool solid = false, bool visible = true)
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetTileTexture(tile, texture, tint, solid, visible);
+            }
+
+            return *this;
+        }
+
+        TileMapActor& TileTextureRegion(
+            char tile,
+            const std::shared_ptr<Texture>& texture,
+            int x,
+            int y,
+            int width,
+            int height,
+            Color tint = RGBA(255, 255, 255),
+            bool solid = false,
+            bool visible = true
+        )
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetTileTextureRegion(tile, texture, { x, y, width, height }, tint, solid, visible);
+            }
+
+            return *this;
+        }
+
+        TileMapActor& TileSolid(char tile, bool solid)
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetTileSolid(tile, solid);
+            }
+
+            return *this;
+        }
+
+        TileMapActor& TileVisible(char tile, bool visible)
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetTileVisible(tile, visible);
+            }
+
+            return *this;
+        }
+
+        bool Collides(const Actor& actor) const
+        {
+            if (const auto tileMap = View())
+            {
+                return tileMap->CollidesRect(actor.Position(), actor.Size());
+            }
+
+            return false;
+        }
+
+        bool IsSolidAt(const Vec2& point) const
+        {
+            if (const auto tileMap = View())
+            {
+                return tileMap->IsSolidAtWorldPoint(point);
+            }
+
+            return false;
+        }
+
+        TileMapActor& hontoMap(const std::vector<std::string>& map)
+        {
+            return Map(map);
+        }
+
+        TileMapActor& hontoTileSize(float width, float height)
+        {
+            return TileSize(width, height);
+        }
+
+        TileMapActor& hontoTile(char tile, Color color, bool solid = false, bool visible = true)
+        {
+            return Tile(tile, color, solid, visible);
+        }
+
+        TileMapActor& hontoTileTexture(char tile, const std::shared_ptr<Texture>& texture, Color tint = RGBA(255, 255, 255), bool solid = false, bool visible = true)
+        {
+            return TileTexture(tile, texture, tint, solid, visible);
+        }
+
+        TileMapActor& hontoTileTextureRegion(
+            char tile,
+            const std::shared_ptr<Texture>& texture,
+            int x,
+            int y,
+            int width,
+            int height,
+            Color tint = RGBA(255, 255, 255),
+            bool solid = false,
+            bool visible = true
+        )
+        {
+            return TileTextureRegion(tile, texture, x, y, width, height, tint, solid, visible);
+        }
+
+        TileMapActor& hontoTileSolid(char tile, bool solid)
+        {
+            return TileSolid(tile, solid);
+        }
+
+        TileMapActor& hontoTileVisible(char tile, bool visible)
+        {
+            return TileVisible(tile, visible);
+        }
+
+        bool hontoCollides(const Actor& actor) const
+        {
+            return Collides(actor);
+        }
+
+        bool hontoIsSolidAt(const Vec2& point) const
+        {
+            return IsSolidAt(point);
+        }
+
+    private:
+        std::shared_ptr<honto::TileMap> View() const
+        {
+            return std::dynamic_pointer_cast<honto::TileMap>(Share());
+        }
+    };
+
+    inline bool Actor::TouchingMap(const TileMapActor& map) const
+    {
+        const auto tileMap = std::dynamic_pointer_cast<honto::TileMap>(map.Share());
+        if (!(*this) || tileMap == nullptr)
+        {
+            return false;
+        }
+
+        return tileMap->CollidesRect(Position(), Size());
+    }
+
+    inline const Actor& Actor::CollideWithMap(const TileMapActor& map) const
+    {
+        if (m_State != nullptr)
+        {
+            m_State->collisionMap = std::dynamic_pointer_cast<honto::TileMap>(map.Share());
+        }
+
+        return EnsurePhysics();
     }
 
     class RaycastActor : public Actor
@@ -2044,6 +2606,17 @@ namespace HonTo
             return Outline(name, width, height, color, thickness);
         }
 
+        TileMapActor TileMap(const std::string& name, const std::vector<std::string>& map, float tileWidth, float tileHeight)
+        {
+            auto tileMap = honto::TileMap::Create(map, tileWidth, tileHeight);
+            return TileMapActor(CreateActor(name, tileMap));
+        }
+
+        TileMapActor hontoTileMap(const std::string& name, const std::vector<std::string>& map, float tileWidth, float tileHeight)
+        {
+            return TileMap(name, map, tileWidth, tileHeight);
+        }
+
         RaycastActor Raycast(const std::string& name, float width, float height)
         {
             auto view = std::make_shared<honto::RaycastView>();
@@ -2080,6 +2653,46 @@ namespace HonTo
         Actor hontoFind(const std::string& name) const
         {
             return Find(name);
+        }
+
+        bool PlaySound(const std::string& path, bool loop = false) const
+        {
+            return HonTo::PlaySound(path, loop);
+        }
+
+        bool PlayAlias(const std::string& alias, bool loop = false) const
+        {
+            return HonTo::PlayAlias(alias, loop);
+        }
+
+        void StopAudio() const
+        {
+            HonTo::StopAudio();
+        }
+
+        void PlayTone(int frequency, int durationMs) const
+        {
+            HonTo::PlayTone(frequency, durationMs);
+        }
+
+        bool hontoPlaySound(const std::string& path, bool loop = false) const
+        {
+            return PlaySound(path, loop);
+        }
+
+        bool hontoPlayAlias(const std::string& alias, bool loop = false) const
+        {
+            return PlayAlias(alias, loop);
+        }
+
+        void hontoStopAudio() const
+        {
+            StopAudio();
+        }
+
+        void hontoPlayTone(int frequency, int durationMs) const
+        {
+            PlayTone(frequency, durationMs);
         }
 
         void EveryFrame(std::function<void(float)> fn)
@@ -2219,6 +2832,11 @@ namespace HonTo
             if (!name.empty())
             {
                 m_State->namedActors[name] = actorState;
+            }
+
+            if (const auto tileMap = std::dynamic_pointer_cast<honto::TileMap>(node))
+            {
+                m_State->namedTileMaps[actorState->name] = tileMap;
             }
 
             if (m_Scene != nullptr)
@@ -2491,12 +3109,15 @@ namespace honto
     using hontoScene = HonTo::Scene;
     using hontoActor = HonTo::Actor;
     using hontoAnimation = HonTo::Animation;
+    using hontoFrameAnimation = HonTo::FrameAnimation;
     using hontoStage = HonTo::Stage;
     using hontoSpriteBuilder = HonTo::Sprite;
     using hontoLayerBuilder = HonTo::Layer;
     using hontoFrameBuilder = HonTo::Frame;
     using hontoGameBuilder = HonTo::GameBuilder;
     using hontoTexture = Texture;
+    using hontoTextureRegion = TextureRegion;
+    using hontoTileMapActor = HonTo::TileMapActor;
     using hontoRaycastActor = HonTo::RaycastActor;
 
     inline Color hontoRGBA(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a = 255)
@@ -2533,6 +3154,36 @@ namespace honto
     )
     {
         return HonTo::CheckerTexture(width, height, a, b, cellSize);
+    }
+
+    inline std::shared_ptr<Texture> hontoFrameSheetTexture(
+        int frameWidth,
+        int frameHeight,
+        const std::vector<Color>& frameColors,
+        int columns = 0
+    )
+    {
+        return HonTo::FrameSheetTexture(frameWidth, frameHeight, frameColors, columns);
+    }
+
+    inline bool hontoPlaySound(const std::string& path, bool loop = false)
+    {
+        return HonTo::PlaySound(path, loop);
+    }
+
+    inline bool hontoPlayAlias(const std::string& alias, bool loop = false)
+    {
+        return HonTo::PlayAlias(alias, loop);
+    }
+
+    inline void hontoStopAudio()
+    {
+        HonTo::StopAudio();
+    }
+
+    inline void hontoPlayTone(int frequency, int durationMs)
+    {
+        HonTo::PlayTone(frequency, durationMs);
     }
 
     inline HonTo::Layer hontoFill(float width, float height, Color color)
