@@ -7,6 +7,7 @@
 #include "Texture.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #define HONTO_CREATE_FUNC(type)                                                                 \
@@ -144,6 +145,59 @@ namespace honto
         std::shared_ptr<Texture> m_Texture;
         TextureRegion m_TextureRegion {};
         bool m_UsesTextureRegion = false;
+    };
+
+    class Label : public Node
+    {
+    public:
+        bool Init() override;
+        static std::shared_ptr<Label> Create(std::string text, Color color = { 255, 255, 255, 255 }, int glyphScale = 1, bool useCamera = false);
+
+        void SetText(std::string text);
+        const std::string& GetText() const;
+        void SetColor(Color color);
+        Color GetColor() const;
+        void SetGlyphScale(int glyphScale);
+        int GetGlyphScale() const;
+        void SetUseCamera(bool useCamera);
+        bool UsesCamera() const;
+
+        void Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale) override;
+
+    private:
+        void RefreshContentSize();
+
+        std::string m_Text;
+        Color m_Color { 255, 255, 255, 255 };
+        int m_GlyphScale = 1;
+        bool m_UseCamera = false;
+    };
+
+    class ProgressBar : public Node
+    {
+    public:
+        bool Init() override;
+        static std::shared_ptr<ProgressBar> Create(float width, float height, float value = 1.0f, bool useCamera = false);
+
+        void SetValue(float value);
+        float GetValue() const;
+        void SetFillColor(Color color);
+        Color GetFillColor() const;
+        void SetBackgroundColor(Color color);
+        Color GetBackgroundColor() const;
+        void SetBorderColor(Color color);
+        Color GetBorderColor() const;
+        void SetUseCamera(bool useCamera);
+        bool UsesCamera() const;
+
+        void Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale) override;
+
+    private:
+        float m_Value = 1.0f;
+        Color m_FillColor { 92, 220, 128, 255 };
+        Color m_BackgroundColor { 18, 24, 36, 180 };
+        Color m_BorderColor { 255, 255, 255, 255 };
+        bool m_UseCamera = false;
     };
 
     class CodeScene : public Scene, public Node

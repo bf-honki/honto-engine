@@ -3,8 +3,97 @@
 #include "honto/Application.h"
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
+#include <string>
 #include <utility>
+
+namespace
+{
+    using GlyphRows = std::array<std::uint8_t, 7>;
+
+    GlyphRows GlyphFor(char character)
+    {
+        switch (static_cast<char>(std::toupper(static_cast<unsigned char>(character))))
+        {
+        case 'A': return { 0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11 };
+        case 'B': return { 0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E };
+        case 'C': return { 0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E };
+        case 'D': return { 0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E };
+        case 'E': return { 0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F };
+        case 'F': return { 0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10 };
+        case 'G': return { 0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F };
+        case 'H': return { 0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11 };
+        case 'I': return { 0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E };
+        case 'J': return { 0x01, 0x01, 0x01, 0x01, 0x11, 0x11, 0x0E };
+        case 'K': return { 0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11 };
+        case 'L': return { 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F };
+        case 'M': return { 0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11 };
+        case 'N': return { 0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11 };
+        case 'O': return { 0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E };
+        case 'P': return { 0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10 };
+        case 'Q': return { 0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D };
+        case 'R': return { 0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11 };
+        case 'S': return { 0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E };
+        case 'T': return { 0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04 };
+        case 'U': return { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E };
+        case 'V': return { 0x11, 0x11, 0x11, 0x11, 0x0A, 0x0A, 0x04 };
+        case 'W': return { 0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A };
+        case 'X': return { 0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11 };
+        case 'Y': return { 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04 };
+        case 'Z': return { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F };
+        case '0': return { 0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E };
+        case '1': return { 0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E };
+        case '2': return { 0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F };
+        case '3': return { 0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E };
+        case '4': return { 0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02 };
+        case '5': return { 0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E };
+        case '6': return { 0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E };
+        case '7': return { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08 };
+        case '8': return { 0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E };
+        case '9': return { 0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C };
+        case ':': return { 0x00, 0x04, 0x04, 0x00, 0x04, 0x04, 0x00 };
+        case '.': return { 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x06 };
+        case '-': return { 0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00 };
+        case '/': return { 0x01, 0x02, 0x02, 0x04, 0x08, 0x08, 0x10 };
+        case '!': return { 0x04, 0x04, 0x04, 0x04, 0x04, 0x00, 0x04 };
+        case ' ': return { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        default: return { 0x1F, 0x11, 0x05, 0x0A, 0x04, 0x00, 0x04 };
+        }
+    }
+
+    void DrawGlyph(
+        honto::Renderer2D& renderer,
+        const GlyphRows& rows,
+        const honto::Vec2& position,
+        int glyphScale,
+        honto::Color color,
+        bool useCamera
+    )
+    {
+        for (std::size_t row = 0; row < rows.size(); ++row)
+        {
+            for (int column = 0; column < 5; ++column)
+            {
+                if ((rows[row] & (1 << (4 - column))) == 0)
+                {
+                    continue;
+                }
+
+                renderer.DrawFilledRect(
+                    {
+                        position.x + static_cast<float>(column * glyphScale),
+                        position.y + static_cast<float>(row * glyphScale)
+                    },
+                    { static_cast<float>(glyphScale), static_cast<float>(glyphScale) },
+                    color,
+                    useCamera
+                );
+            }
+        }
+    }
+}
 
 namespace honto
 {
@@ -335,6 +424,202 @@ namespace honto
         }
 
         renderer.DrawFilledRect(worldPosition, GetContentSize() * worldScale, m_Color);
+    }
+
+    bool Label::Init()
+    {
+        RefreshContentSize();
+        return true;
+    }
+
+    std::shared_ptr<Label> Label::Create(std::string text, Color color, int glyphScale, bool useCamera)
+    {
+        auto label = std::make_shared<Label>();
+        if (label != nullptr && label->Init())
+        {
+            label->SetText(std::move(text));
+            label->SetColor(color);
+            label->SetGlyphScale(glyphScale);
+            label->SetUseCamera(useCamera);
+            return label;
+        }
+
+        return nullptr;
+    }
+
+    void Label::SetText(std::string text)
+    {
+        m_Text = std::move(text);
+        RefreshContentSize();
+    }
+
+    const std::string& Label::GetText() const
+    {
+        return m_Text;
+    }
+
+    void Label::SetColor(Color color)
+    {
+        m_Color = color;
+    }
+
+    Color Label::GetColor() const
+    {
+        return m_Color;
+    }
+
+    void Label::SetGlyphScale(int glyphScale)
+    {
+        m_GlyphScale = std::max(1, glyphScale);
+        RefreshContentSize();
+    }
+
+    int Label::GetGlyphScale() const
+    {
+        return m_GlyphScale;
+    }
+
+    void Label::SetUseCamera(bool useCamera)
+    {
+        m_UseCamera = useCamera;
+    }
+
+    bool Label::UsesCamera() const
+    {
+        return m_UseCamera;
+    }
+
+    void Label::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
+    {
+        const int glyphScale = std::max(1, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x)));
+        float cursorX = worldPosition.x;
+        float cursorY = worldPosition.y;
+        const float lineAdvance = static_cast<float>(glyphScale * 8);
+        const float columnAdvance = static_cast<float>(glyphScale * 6);
+
+        for (char character : m_Text)
+        {
+            if (character == '\n')
+            {
+                cursorX = worldPosition.x;
+                cursorY += lineAdvance;
+                continue;
+            }
+
+            DrawGlyph(renderer, GlyphFor(character), { cursorX, cursorY }, glyphScale, m_Color, m_UseCamera);
+            cursorX += columnAdvance;
+        }
+    }
+
+    void Label::RefreshContentSize()
+    {
+        std::size_t maxColumns = 0;
+        std::size_t currentColumns = 0;
+        std::size_t lineCount = 1;
+
+        for (char character : m_Text)
+        {
+            if (character == '\n')
+            {
+                maxColumns = std::max(maxColumns, currentColumns);
+                currentColumns = 0;
+                ++lineCount;
+                continue;
+            }
+
+            ++currentColumns;
+        }
+
+        maxColumns = std::max(maxColumns, currentColumns);
+        const float width = maxColumns == 0 ? 0.0f : static_cast<float>(((maxColumns * 6) - 1) * static_cast<std::size_t>(m_GlyphScale));
+        const float height = lineCount == 0 ? 0.0f : static_cast<float>(((lineCount * 8) - 1) * static_cast<std::size_t>(m_GlyphScale));
+        SetContentSize(width, height);
+    }
+
+    bool ProgressBar::Init()
+    {
+        return true;
+    }
+
+    std::shared_ptr<ProgressBar> ProgressBar::Create(float width, float height, float value, bool useCamera)
+    {
+        auto bar = std::make_shared<ProgressBar>();
+        if (bar != nullptr && bar->Init())
+        {
+            bar->SetContentSize(width, height);
+            bar->SetValue(value);
+            bar->SetUseCamera(useCamera);
+            return bar;
+        }
+
+        return nullptr;
+    }
+
+    void ProgressBar::SetValue(float value)
+    {
+        m_Value = std::clamp(value, 0.0f, 1.0f);
+    }
+
+    float ProgressBar::GetValue() const
+    {
+        return m_Value;
+    }
+
+    void ProgressBar::SetFillColor(Color color)
+    {
+        m_FillColor = color;
+    }
+
+    Color ProgressBar::GetFillColor() const
+    {
+        return m_FillColor;
+    }
+
+    void ProgressBar::SetBackgroundColor(Color color)
+    {
+        m_BackgroundColor = color;
+    }
+
+    Color ProgressBar::GetBackgroundColor() const
+    {
+        return m_BackgroundColor;
+    }
+
+    void ProgressBar::SetBorderColor(Color color)
+    {
+        m_BorderColor = color;
+    }
+
+    Color ProgressBar::GetBorderColor() const
+    {
+        return m_BorderColor;
+    }
+
+    void ProgressBar::SetUseCamera(bool useCamera)
+    {
+        m_UseCamera = useCamera;
+    }
+
+    bool ProgressBar::UsesCamera() const
+    {
+        return m_UseCamera;
+    }
+
+    void ProgressBar::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
+    {
+        const Vec2 size = GetContentSize() * worldScale;
+        renderer.DrawFilledRect(worldPosition, size, m_BackgroundColor, m_UseCamera);
+        renderer.DrawRectOutline(worldPosition, size, m_BorderColor, std::max(1, static_cast<int>(std::round(worldScale.x))), m_UseCamera);
+
+        const float border = std::max(1.0f, worldScale.x);
+        const float innerWidth = std::max(0.0f, size.x - (border * 2.0f));
+        const float innerHeight = std::max(0.0f, size.y - (border * 2.0f));
+        renderer.DrawFilledRect(
+            { worldPosition.x + border, worldPosition.y + border },
+            { innerWidth * m_Value, innerHeight },
+            m_FillColor,
+            m_UseCamera
+        );
     }
 
     void CodeScene::OnCreate()

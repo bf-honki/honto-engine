@@ -7,8 +7,10 @@
 - `honto::hontoGame(...)`로 게임 시작
 - `honto::hontoStage`에서 장면 구성
 - 중력, 점프, 트윈 애니메이션, 스프라이트시트 애니메이션, 화면 전환, 멀티 윈도우
-- BMP 텍스처 로딩, 체커 텍스처 생성, 프레임 시트 생성
+- BMP/PNG 텍스처 로딩, 체커 텍스처 생성, 프레임 시트 생성
 - 타일맵 렌더링과 맵 충돌
+- 텍스트 라벨과 진행 바 UI
+- 레벨 파일 저장/불러오기
 - WAV 재생, 시스템 사운드 alias 재생, 간단 톤 재생
 - 카메라 따라가기
 - 2D 맵을 이용한 둠 스타일 2.5D 레이캐스트 화면
@@ -118,7 +120,42 @@ stage.hontoCameraFollow(player, 1.0f);
 stage.hontoCameraReset();
 ```
 
-### 7. 오디오
+### 7. 텍스트와 UI
+
+```cpp
+auto title = stage.hontoText("title", "PORTAL PLAINS", honto::hontoRGBA(238, 245, 255), 2)
+    .hontoAt(8.0f, 8.0f)
+    .hontoLayer(10);
+
+auto hp = stage.hontoBar(
+    "hp",
+    120.0f,
+    10.0f,
+    0.75f,
+    honto::hontoRGBA(104, 228, 136),
+    honto::hontoRGBA(12, 18, 30, 220),
+    honto::hontoRGBA(236, 245, 255)
+).hontoAt(8.0f, 32.0f);
+```
+
+### 8. 레벨 파일
+
+```cpp
+auto level = honto::hontoLoadLevel("sandbox/levels/platform.honto");
+auto spawn = honto::hontoFindLevelEntity(level, "player_spawn");
+
+auto world = stage.hontoTileMap("world", level);
+if (spawn != nullptr)
+{
+    player.hontoAt(spawn->position);
+}
+
+honto::hontoSaveLevel("sandbox/levels/platform_exported.honto", level);
+```
+
+레벨 파일은 `sandbox/levels/platform.honto`처럼 텍스트 기반으로 저장됩니다.
+
+### 9. 오디오
 
 ```cpp
 stage.hontoPlayTone(740, 70);
@@ -126,13 +163,13 @@ stage.hontoPlaySound("assets/jump.wav");
 honto::hontoPlayAlias("SystemAsterisk");
 ```
 
-### 8. 화면 전환
+### 10. 화면 전환
 
 ```cpp
 stage.hontoGoWithFade(BuildNextScene, 0.7f);
 ```
 
-### 9. 여러 창
+### 11. 여러 창
 
 ```cpp
 return honto::hontoGame("Main")
@@ -141,7 +178,7 @@ return honto::hontoGame("Main")
     .hontoRun();
 ```
 
-### 10. 둠 스타일 2.5D
+### 12. 둠 스타일 2.5D
 
 `RaycastView`는 2D 그리드 맵을 기반으로 벽을 세워서 3D처럼 보이게 그립니다.
 
@@ -183,9 +220,11 @@ raycast.hontoMap({
 - `engine/include/honto/TileMap.h`
   - 타일맵 렌더링과 월드 충돌
 - `engine/include/honto/Texture.h`
-  - BMP 텍스처, 체커 텍스처, 프레임 시트
+  - BMP/PNG 텍스처, 체커 텍스처, 프레임 시트
 - `engine/include/honto/Audio.h`
   - WAV, alias, tone 재생
+- `engine/include/honto/Level.h`
+  - 레벨 저장/불러오기 포맷
 - `engine/include/honto/Raycast.h`
   - 둠 스타일 2.5D 뷰
 - `engine/src/Renderer2D.cpp`
@@ -214,16 +253,28 @@ raycast.hontoMap({
 - 각 문자마다 색, 텍스처, 텍스처 영역, 고체 여부를 지정할 수 있습니다.
 - 액터는 `hontoCollideWithMap(...)`으로 맵 충돌을 바로 붙일 수 있습니다.
 
+### UI
+
+- `Label`은 5x7 비트맵 글꼴 기반 텍스트를 그립니다.
+- `ProgressBar`는 HUD용 진행 바를 그립니다.
+- 둘 다 카메라 영향을 받을지 여부를 선택할 수 있습니다.
+
+### Level
+
+- `LevelDocument`는 타일 크기, 맵, 엔티티 목록을 담습니다.
+- `LevelFile::Load/Save`로 텍스트 파일로 읽고 저장할 수 있습니다.
+- 샌드박스는 실제로 `sandbox/levels/platform.honto`를 읽어서 장면을 구성합니다.
+
 ### Easy API
 
 - `Stage`가 장면 단위 편의 기능을 제공합니다.
-- `Actor`는 노드 핸들 역할을 하며, 중력/점프/트윈/타일 충돌/프레임 애니메이션을 쉽게 쓸 수 있습니다.
+- `Actor`는 노드 핸들 역할을 하며, 중력/점프/트윈/타일 충돌/프레임 애니메이션/UI 갱신을 쉽게 쓸 수 있습니다.
 - `TileMapActor`는 타일 정의와 충돌 맵 구성을 담당합니다.
 - `RaycastActor`는 `RaycastView`를 쉽게 설정하기 위한 전용 핸들입니다.
 
 ## 현재 제한 사항
 
-- 텍스처 로딩은 현재 `BMP` 중심입니다.
+- 텍스처 로딩은 현재 `BMP`와 `PNG` 중심입니다.
 - 오디오는 현재 Windows 기본 재생 경로 중심입니다.
 - 타일 충돌은 축 정렬 박스 기준의 가벼운 플랫폼형 해결 방식입니다.
 - 타일맵 에디터와 고급 충돌 계층은 아직 없습니다.
@@ -231,10 +282,10 @@ raycast.hontoMap({
 
 ## 다음에 붙이면 좋은 것
 
-1. PNG/WAV 로더
-2. 텍스트와 UI
-3. 레벨 저장 포맷
-4. 오디오 믹서
+1. 마우스 입력과 버튼 위젯
+2. JSON 또는 Tiled 맵 포맷 지원
+3. 오디오 믹서
+4. 파티클과 카메라 흔들림
 5. 에디터용 프로젝트 포맷
 6. 에디터 UI
 

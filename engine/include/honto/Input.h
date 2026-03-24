@@ -20,6 +20,7 @@ namespace honto
         Down = VK_DOWN,
         Escape = VK_ESCAPE,
         Enter = VK_RETURN,
+        F5 = VK_F5,
         Space = VK_SPACE,
         A = 'A',
         D = 'D',

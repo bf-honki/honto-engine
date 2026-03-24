@@ -16,6 +16,7 @@ set(HONTO_ENGINE_HEADERS
     engine/include/honto/Entity.h
     engine/include/honto/HonTo.h
     engine/include/honto/Input.h
+    engine/include/honto/Level.h
     engine/include/honto/Math.h
     engine/include/honto/Raycast.h
     engine/include/honto/Renderer2D.h
@@ -31,6 +32,7 @@ set(HONTO_ENGINE_SOURCES
     engine/src/Application.cpp
     engine/src/Audio.cpp
     engine/src/Input.cpp
+    engine/src/Level.cpp
     engine/src/Raycast.cpp
     engine/src/Renderer2D.cpp
     engine/src/Scene.cpp
@@ -61,6 +63,7 @@ target_compile_definitions(honto_engine PRIVATE
 target_link_libraries(honto_engine PUBLIC
     user32
     gdi32
+    gdiplus
     winmm
 )
 

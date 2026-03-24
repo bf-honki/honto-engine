@@ -1,7 +1,20 @@
 #include "honto/Texture.h"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <Windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
+
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <fstream>
 
 namespace
@@ -27,10 +40,93 @@ namespace
     {
         return static_cast<std::int32_t>(ReadUInt32(stream));
     }
+
+    std::wstring ToWide(const std::string& text)
+    {
+        if (text.empty())
+        {
+            return {};
+        }
+
+        const int required = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
+        if (required <= 0)
+        {
+            return {};
+        }
+
+        std::wstring wide(static_cast<std::size_t>(required), L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, wide.data(), required);
+
+        if (!wide.empty() && wide.back() == L'\0')
+        {
+            wide.pop_back();
+        }
+
+        return wide;
+    }
+
+    std::string ToLowerCopy(std::string text)
+    {
+        for (char& character : text)
+        {
+            character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+        }
+
+        return text;
+    }
+
+    class GdiplusRuntime
+    {
+    public:
+        GdiplusRuntime()
+        {
+            Gdiplus::GdiplusStartupInput input;
+            m_Status = Gdiplus::GdiplusStartup(&m_Token, &input, nullptr);
+        }
+
+        ~GdiplusRuntime()
+        {
+            if (m_Token != 0)
+            {
+                Gdiplus::GdiplusShutdown(m_Token);
+            }
+        }
+
+        bool Ready() const
+        {
+            return m_Status == Gdiplus::Ok && m_Token != 0;
+        }
+
+    private:
+        ULONG_PTR m_Token = 0;
+        Gdiplus::Status m_Status = Gdiplus::GenericError;
+    };
+
+    GdiplusRuntime& GetGdiplusRuntime()
+    {
+        static GdiplusRuntime runtime;
+        return runtime;
+    }
 }
 
 namespace honto
 {
+    bool Texture::Load(const std::string& path)
+    {
+        const std::string lowerPath = ToLowerCopy(path);
+        if (lowerPath.size() >= 4 && lowerPath.substr(lowerPath.size() - 4) == ".bmp")
+        {
+            return LoadBmp(path);
+        }
+
+        if (lowerPath.size() >= 4 && lowerPath.substr(lowerPath.size() - 4) == ".png")
+        {
+            return LoadPng(path);
+        }
+
+        return LoadBmp(path) || LoadPng(path);
+    }
+
     bool Texture::LoadBmp(const std::string& path)
     {
         std::ifstream stream(path, std::ios::binary);
@@ -118,6 +214,61 @@ namespace honto
         return true;
     }
 
+    bool Texture::LoadPng(const std::string& path)
+    {
+        if (!GetGdiplusRuntime().Ready())
+        {
+            return false;
+        }
+
+        const std::wstring widePath = ToWide(path);
+        if (widePath.empty())
+        {
+            return false;
+        }
+
+        Gdiplus::Bitmap bitmap(widePath.c_str());
+        if (bitmap.GetLastStatus() != Gdiplus::Ok)
+        {
+            return false;
+        }
+
+        const int width = static_cast<int>(bitmap.GetWidth());
+        const int height = static_cast<int>(bitmap.GetHeight());
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        m_Width = width;
+        m_Height = height;
+        m_Pixels.assign(static_cast<std::size_t>(m_Width * m_Height), {});
+
+        for (int y = 0; y < m_Height; ++y)
+        {
+            for (int x = 0; x < m_Width; ++x)
+            {
+                Gdiplus::Color pixel;
+                if (bitmap.GetPixel(x, y, &pixel) != Gdiplus::Ok)
+                {
+                    m_Width = 0;
+                    m_Height = 0;
+                    m_Pixels.clear();
+                    return false;
+                }
+
+                Color color;
+                color.r = pixel.GetR();
+                color.g = pixel.GetG();
+                color.b = pixel.GetB();
+                color.a = pixel.GetA();
+                m_Pixels[static_cast<std::size_t>((y * m_Width) + x)] = color;
+            }
+        }
+
+        return true;
+    }
+
     Color Texture::Sample(float u, float v) const
     {
         if (!IsValid())
@@ -163,10 +314,32 @@ namespace honto
         return m_Pixels[static_cast<std::size_t>((y * m_Width) + x)];
     }
 
+    std::shared_ptr<Texture> Texture::LoadShared(const std::string& path)
+    {
+        auto texture = std::make_shared<Texture>();
+        if (texture != nullptr && texture->Load(path))
+        {
+            return texture;
+        }
+
+        return nullptr;
+    }
+
     std::shared_ptr<Texture> Texture::LoadBmpShared(const std::string& path)
     {
         auto texture = std::make_shared<Texture>();
         if (texture != nullptr && texture->LoadBmp(path))
+        {
+            return texture;
+        }
+
+        return nullptr;
+    }
+
+    std::shared_ptr<Texture> Texture::LoadPngShared(const std::string& path)
+    {
+        auto texture = std::make_shared<Texture>();
+        if (texture != nullptr && texture->LoadPng(path))
         {
             return texture;
         }

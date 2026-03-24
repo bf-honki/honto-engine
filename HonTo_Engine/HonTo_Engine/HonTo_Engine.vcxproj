@@ -112,7 +112,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;gdiplus.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -129,7 +129,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;gdiplus.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -144,7 +144,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;gdiplus.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -161,7 +161,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>user32.lib;gdi32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;gdiplus.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 
@@ -174,6 +174,7 @@
     <ClInclude Include="..\..\engine\include\honto\Entity.h" />
     <ClInclude Include="..\..\engine\include\honto\HonTo.h" />
     <ClInclude Include="..\..\engine\include\honto\Input.h" />
+    <ClInclude Include="..\..\engine\include\honto\Level.h" />
     <ClInclude Include="..\..\engine\include\honto\Math.h" />
     <ClInclude Include="..\..\engine\include\honto\Raycast.h" />
     <ClInclude Include="..\..\engine\include\honto\Renderer2D.h" />
@@ -188,6 +189,7 @@
     <ClCompile Include="..\..\engine\src\Application.cpp" />
     <ClCompile Include="..\..\engine\src\Audio.cpp" />
     <ClCompile Include="..\..\engine\src\Input.cpp" />
+    <ClCompile Include="..\..\engine\src\Level.cpp" />
     <ClCompile Include="..\..\engine\src\Raycast.cpp" />
     <ClCompile Include="..\..\engine\src\Renderer2D.cpp" />
     <ClCompile Include="..\..\engine\src\Scene.cpp" />

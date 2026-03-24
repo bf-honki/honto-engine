@@ -48,6 +48,9 @@
     <ClInclude Include="..\..\engine\include\honto\Input.h">
       <Filter>헤더 파일\Engine</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\engine\include\honto\Level.h">
+      <Filter>헤더 파일\Engine</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\engine\include\honto\Math.h">
       <Filter>헤더 파일\Engine</Filter>
     </ClInclude>
@@ -84,6 +87,9 @@
       <Filter>소스 파일\Engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\engine\src\Input.cpp">
+      <Filter>소스 파일\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\src\Level.cpp">
       <Filter>소스 파일\Engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\engine\src\Raycast.cpp">

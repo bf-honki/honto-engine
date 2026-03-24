@@ -10,13 +10,13 @@ This first version focuses on the foundation:
 - a software 2D renderer with a pixel backbuffer
 - scenes, entities, transforms, sprites, and simple rigid bodies
 - a cocos2d-x style code-first scene graph with nodes, layers, and sprites
-- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, audio, scene transitions, and multiple windows
+- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI, audio, level files, scene transitions, and multiple windows
 - keyboard input
-- a sandbox game that shows 2D platforming, tile collisions, audio cues, and a DOOM-style 2.5D scene switch
+- a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, level-file loading, audio cues, and a DOOM-style 2.5D scene switch
 
 ## Why this structure
 
-If the goal is "other people can make games with it", the engine needs a stable runtime API first, then editor tooling, asset import, richer animation, physics, UI, save formats, and scripting.
+If the goal is "other people can make games with it", the engine needs a stable runtime API first, then editor tooling, richer asset import, richer animation, physics, polish tools, and scripting.
 
 This repository starts with the runtime layer so we can iterate safely.
 
@@ -210,13 +210,14 @@ int main()
 Useful helpers in this style:
 
 - `honto::hontoGame(...)`, `game.hontoWindow(...)`, `game.hontoOpenWindow(...)`
-- `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`, `stage.hontoTileMap(...)`
+- `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`, `stage.hontoTileMap(...)`, `stage.hontoText(...)`, `stage.hontoBar(...)`
 - `actor.hontoAt(...)`, `actor.hontoMove(...)`, `actor.hontoPaint(...)`, `actor.hontoLayer(...)`
 - `actor.hontoUseGravity()`, `actor.hontoCollideWithMap(...)`, `actor.hontoJumpWhenPressed(...)`
 - `actor.hontoAnimate().hontoMoveTo(...).hontoScaleTo(...).hontoPaintTo(...).hontoIn(...).hontoPingPong().hontoLoop().hontoPlay()`
 - `actor.hontoAnimateFrames().hontoTexture(...).hontoFrameSize(...).hontoFrames(...).hontoFPS(...).hontoLoop().hontoPlay()`
 - `stage.hontoEveryFrame(...)`, `stage.hontoWhenPressed(...)`, `stage.hontoFind("name")`
 - `stage.hontoPlayTone(...)`, `stage.hontoPlaySound(...)`, `stage.hontoGoWithFade(...)`, `honto::hontoFade(...)`
+- `honto::hontoLoadLevel(...)`, `honto::hontoSaveLevel(...)`, `honto::hontoFindLevelEntity(...)`
 
 If you prefer the more traditional engine style, the older scene-subclass API still works:
 
@@ -253,9 +254,9 @@ private:
 
 ## Next milestones
 
-1. PNG and richer asset import
-2. text and UI widgets
-3. save/load scene or level formats
-4. audio mixer and channels
+1. richer UI widgets and mouse input
+2. tiled-map or JSON import/export
+3. audio mixer and channels
+4. particle and camera effect helpers
 5. editor and project format
 6. scripting layer, such as Lua or C# embedding

@@ -7,6 +7,7 @@
 #include "Easy.h"
 #include "Entity.h"
 #include "Input.h"
+#include "Level.h"
 #include "Math.h"
 #include "Raycast.h"
 #include "Renderer2D.h"

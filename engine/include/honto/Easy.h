@@ -3,6 +3,7 @@
 #include "Application.h"
 #include "Audio.h"
 #include "Input.h"
+#include "Level.h"
 #include "Raycast.h"
 #include "SceneGraph.h"
 #include "TileMap.h"
@@ -26,6 +27,8 @@ namespace HonTo
     using Vec2 = honto::Vec2;
     using Color = honto::Color;
     using Key = honto::KeyCode;
+    using Level = honto::LevelDocument;
+    using LevelEntity = honto::LevelEntity;
     using Texture = honto::Texture;
 
     namespace detail
@@ -176,7 +179,7 @@ namespace HonTo
 
     inline std::shared_ptr<Texture> LoadTexture(const std::string& path)
     {
-        return Texture::LoadBmpShared(path);
+        return Texture::LoadShared(path);
     }
 
     inline std::shared_ptr<Texture> CheckerTexture(
@@ -218,6 +221,23 @@ namespace HonTo
     inline void PlayTone(int frequency, int durationMs)
     {
         honto::Audio::PlayTone(frequency, durationMs);
+    }
+
+    inline Level LoadLevel(const std::string& path)
+    {
+        Level level;
+        honto::LevelFile::Load(path, level);
+        return level;
+    }
+
+    inline bool SaveLevel(const std::string& path, const Level& level)
+    {
+        return honto::LevelFile::Save(path, level);
+    }
+
+    inline const LevelEntity* FindLevelEntity(const Level& level, const std::string& name)
+    {
+        return honto::FindLevelEntity(level, name);
     }
 
     template <typename Derived, typename TNode>
@@ -772,6 +792,16 @@ namespace HonTo
                 return frame->GetColor();
             }
 
+            if (const auto label = std::dynamic_pointer_cast<honto::Label>(Node()))
+            {
+                return label->GetColor();
+            }
+
+            if (const auto bar = std::dynamic_pointer_cast<honto::ProgressBar>(Node()))
+            {
+                return bar->GetFillColor();
+            }
+
             return RGBA(255, 255, 255);
         }
 
@@ -909,6 +939,14 @@ namespace HonTo
             {
                 frame->SetColor(color);
             }
+            else if (const auto label = std::dynamic_pointer_cast<honto::Label>(Node()))
+            {
+                label->SetColor(color);
+            }
+            else if (const auto bar = std::dynamic_pointer_cast<honto::ProgressBar>(Node()))
+            {
+                bar->SetFillColor(color);
+            }
 
             return *this;
         }
@@ -963,6 +1001,62 @@ namespace HonTo
             if (const auto frame = std::dynamic_pointer_cast<detail::FrameNode>(Node()))
             {
                 frame->SetThickness(thickness);
+            }
+
+            return *this;
+        }
+
+        const Actor& TextValue(const std::string& text) const
+        {
+            if (const auto label = std::dynamic_pointer_cast<honto::Label>(Node()))
+            {
+                label->SetText(text);
+            }
+
+            return *this;
+        }
+
+        const Actor& TextScale(int glyphScale) const
+        {
+            if (const auto label = std::dynamic_pointer_cast<honto::Label>(Node()))
+            {
+                label->SetGlyphScale(glyphScale);
+            }
+
+            return *this;
+        }
+
+        const Actor& UseCamera(bool useCamera) const
+        {
+            if (const auto label = std::dynamic_pointer_cast<honto::Label>(Node()))
+            {
+                label->SetUseCamera(useCamera);
+            }
+            else if (const auto bar = std::dynamic_pointer_cast<honto::ProgressBar>(Node()))
+            {
+                bar->SetUseCamera(useCamera);
+            }
+
+            return *this;
+        }
+
+        const Actor& BarValue(float value) const
+        {
+            if (const auto bar = std::dynamic_pointer_cast<honto::ProgressBar>(Node()))
+            {
+                bar->SetValue(value);
+            }
+
+            return *this;
+        }
+
+        const Actor& BarColors(Color fill, Color background, Color border) const
+        {
+            if (const auto bar = std::dynamic_pointer_cast<honto::ProgressBar>(Node()))
+            {
+                bar->SetFillColor(fill);
+                bar->SetBackgroundColor(background);
+                bar->SetBorderColor(border);
             }
 
             return *this;
@@ -1267,6 +1361,31 @@ namespace HonTo
         const Actor& hontoUseTexture(const std::shared_ptr<Texture>& texture) const
         {
             return UseTexture(texture);
+        }
+
+        const Actor& hontoTextValue(const std::string& text) const
+        {
+            return TextValue(text);
+        }
+
+        const Actor& hontoTextScale(int glyphScale) const
+        {
+            return TextScale(glyphScale);
+        }
+
+        const Actor& hontoUseCamera(bool useCamera) const
+        {
+            return UseCamera(useCamera);
+        }
+
+        const Actor& hontoBarValue(float value) const
+        {
+            return BarValue(value);
+        }
+
+        const Actor& hontoBarColors(Color fill, Color background, Color border) const
+        {
+            return BarColors(fill, background, border);
         }
 
         const Actor& hontoUseTextureRegion(int x, int y, int width, int height) const
@@ -2612,9 +2731,73 @@ namespace HonTo
             return TileMapActor(CreateActor(name, tileMap));
         }
 
+        TileMapActor TileMap(const std::string& name, const Level& level)
+        {
+            return TileMap(name, level.map, level.tileSize.x, level.tileSize.y);
+        }
+
         TileMapActor hontoTileMap(const std::string& name, const std::vector<std::string>& map, float tileWidth, float tileHeight)
         {
             return TileMap(name, map, tileWidth, tileHeight);
+        }
+
+        TileMapActor hontoTileMap(const std::string& name, const Level& level)
+        {
+            return TileMap(name, level);
+        }
+
+        Actor Text(
+            const std::string& name,
+            const std::string& text,
+            Color color = RGBA(255, 255, 255),
+            int glyphScale = 1,
+            bool useCamera = false
+        )
+        {
+            auto actor = CreateActor(name, honto::Label::Create(text, color, glyphScale, useCamera));
+            actor.TextValue(text).Paint(color).TextScale(glyphScale).UseCamera(useCamera);
+            return actor;
+        }
+
+        Actor hontoText(
+            const std::string& name,
+            const std::string& text,
+            Color color = RGBA(255, 255, 255),
+            int glyphScale = 1,
+            bool useCamera = false
+        )
+        {
+            return Text(name, text, color, glyphScale, useCamera);
+        }
+
+        Actor Bar(
+            const std::string& name,
+            float width,
+            float height,
+            float value = 1.0f,
+            Color fill = RGBA(92, 220, 128),
+            Color background = RGBA(18, 24, 36, 180),
+            Color border = RGBA(255, 255, 255),
+            bool useCamera = false
+        )
+        {
+            auto actor = CreateActor(name, honto::ProgressBar::Create(width, height, value, useCamera));
+            actor.Size(width, height).BarValue(value).BarColors(fill, background, border).UseCamera(useCamera);
+            return actor;
+        }
+
+        Actor hontoBar(
+            const std::string& name,
+            float width,
+            float height,
+            float value = 1.0f,
+            Color fill = RGBA(92, 220, 128),
+            Color background = RGBA(18, 24, 36, 180),
+            Color border = RGBA(255, 255, 255),
+            bool useCamera = false
+        )
+        {
+            return Bar(name, width, height, value, fill, background, border, useCamera);
         }
 
         RaycastActor Raycast(const std::string& name, float width, float height)
@@ -3110,6 +3293,8 @@ namespace honto
     using hontoActor = HonTo::Actor;
     using hontoAnimation = HonTo::Animation;
     using hontoFrameAnimation = HonTo::FrameAnimation;
+    using hontoLevel = LevelDocument;
+    using hontoLevelEntity = LevelEntity;
     using hontoStage = HonTo::Stage;
     using hontoSpriteBuilder = HonTo::Sprite;
     using hontoLayerBuilder = HonTo::Layer;
@@ -3143,6 +3328,21 @@ namespace honto
     inline std::shared_ptr<Texture> hontoLoadTexture(const std::string& path)
     {
         return HonTo::LoadTexture(path);
+    }
+
+    inline LevelDocument hontoLoadLevel(const std::string& path)
+    {
+        return HonTo::LoadLevel(path);
+    }
+
+    inline bool hontoSaveLevel(const std::string& path, const LevelDocument& level)
+    {
+        return HonTo::SaveLevel(path, level);
+    }
+
+    inline const LevelEntity* hontoFindLevelEntity(const LevelDocument& level, const std::string& name)
+    {
+        return HonTo::FindLevelEntity(level, name);
     }
 
     inline std::shared_ptr<Texture> hontoCheckerTexture(

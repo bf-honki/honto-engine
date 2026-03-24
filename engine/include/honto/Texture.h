@@ -25,7 +25,9 @@ namespace honto
     class Texture
     {
     public:
+        bool Load(const std::string& path);
         bool LoadBmp(const std::string& path);
+        bool LoadPng(const std::string& path);
 
         int Width() const
         {
@@ -45,7 +47,9 @@ namespace honto
         Color Sample(float u, float v) const;
         Color SampleRegion(float u, float v, const TextureRegion& region) const;
 
+        static std::shared_ptr<Texture> LoadShared(const std::string& path);
         static std::shared_ptr<Texture> LoadBmpShared(const std::string& path);
+        static std::shared_ptr<Texture> LoadPngShared(const std::string& path);
         static std::shared_ptr<Texture> CreateCheckerboard(
             int width,
             int height,
