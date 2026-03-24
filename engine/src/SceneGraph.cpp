@@ -836,6 +836,16 @@ namespace honto
         return &m_Application->GetRenderer();
     }
 
+    Window* Director::GetWindow() const
+    {
+        if (m_Application == nullptr)
+        {
+            return nullptr;
+        }
+
+        return &m_Application->GetWindow();
+    }
+
     void Director::ReplaceScene(std::unique_ptr<Scene> scene)
     {
         if (m_Application != nullptr)
@@ -850,6 +860,16 @@ namespace honto
         {
             m_Application->SetScene(std::move(scene), transition);
         }
+    }
+
+    bool Director::ReplaceSceneInWindow(const std::string& windowIdOrTitle, std::unique_ptr<Scene> scene, const SceneTransition& transition, bool focusWindow)
+    {
+        return m_Application != nullptr && m_Application->SetSceneForWindow(windowIdOrTitle, std::move(scene), transition, focusWindow);
+    }
+
+    bool Director::FocusWindow(const std::string& windowIdOrTitle) const
+    {
+        return m_Application != nullptr && m_Application->FocusWindow(windowIdOrTitle);
     }
 
     void Director::AttachApplication(Application* application)

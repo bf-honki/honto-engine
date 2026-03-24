@@ -15,9 +15,14 @@ namespace honto
         config.windowHeight = std::max(180, config.windowHeight);
         config.renderWidth = std::max(1, config.renderWidth);
         config.renderHeight = std::max(1, config.renderHeight);
+        config.opacity = std::clamp(config.opacity, 0.1f, 1.0f);
         if (config.title.empty())
         {
             config.title = "HonTo Window";
+        }
+        if (config.windowId.empty())
+        {
+            config.windowId = config.title;
         }
 
         return config;
@@ -106,6 +111,47 @@ namespace honto
         return ActiveContext().scene.get();
     }
 
+    bool Application::SetSceneForWindow(const std::string& windowIdOrTitle, std::unique_ptr<Scene> scene, const SceneTransition& transition, bool focusWindow)
+    {
+        WindowContext* context = FindContext(windowIdOrTitle);
+        if (context == nullptr || scene == nullptr)
+        {
+            return false;
+        }
+
+        RequestSceneChange(*context, std::move(scene), transition);
+        if (focusWindow && context->window != nullptr)
+        {
+            context->window->Focus();
+        }
+
+        return true;
+    }
+
+    bool Application::FocusWindow(const std::string& windowIdOrTitle)
+    {
+        WindowContext* context = FindContext(windowIdOrTitle);
+        if (context == nullptr || context->window == nullptr)
+        {
+            return false;
+        }
+
+        context->window->Focus();
+        return true;
+    }
+
+    Window* Application::FindWindow(const std::string& windowIdOrTitle)
+    {
+        WindowContext* context = FindContext(windowIdOrTitle);
+        return context != nullptr ? context->window.get() : nullptr;
+    }
+
+    const Window* Application::FindWindow(const std::string& windowIdOrTitle) const
+    {
+        const WindowContext* context = FindContext(windowIdOrTitle);
+        return context != nullptr ? context->window.get() : nullptr;
+    }
+
     Application::WindowContext& Application::ActiveContext()
     {
         return (m_CurrentContext != nullptr) ? *m_CurrentContext : m_MainContext;
@@ -116,11 +162,59 @@ namespace honto
         return (m_CurrentContext != nullptr) ? *m_CurrentContext : m_MainContext;
     }
 
+    Application::WindowContext* Application::FindContext(const std::string& windowIdOrTitle)
+    {
+        if (m_MainContext.window != nullptr &&
+            (m_MainContext.config.windowId == windowIdOrTitle || m_MainContext.config.title == windowIdOrTitle))
+        {
+            return &m_MainContext;
+        }
+
+        for (WindowContext& context : m_AdditionalContexts)
+        {
+            if (context.window != nullptr &&
+                (context.config.windowId == windowIdOrTitle || context.config.title == windowIdOrTitle))
+            {
+                return &context;
+            }
+        }
+
+        return nullptr;
+    }
+
+    const Application::WindowContext* Application::FindContext(const std::string& windowIdOrTitle) const
+    {
+        if (m_MainContext.window != nullptr &&
+            (m_MainContext.config.windowId == windowIdOrTitle || m_MainContext.config.title == windowIdOrTitle))
+        {
+            return &m_MainContext;
+        }
+
+        for (const WindowContext& context : m_AdditionalContexts)
+        {
+            if (context.window != nullptr &&
+                (context.config.windowId == windowIdOrTitle || context.config.title == windowIdOrTitle))
+            {
+                return &context;
+            }
+        }
+
+        return nullptr;
+    }
+
     void Application::InitializeContext(WindowContext& context, AppConfig config, std::unique_ptr<Scene> scene, bool closeStopsGame)
     {
         context.config = SanitizeConfig(std::move(config));
         context.closeStopsGame = closeStopsGame;
-        context.window = std::make_unique<Window>(context.config.title, context.config.windowWidth, context.config.windowHeight);
+        context.window = std::make_unique<Window>(
+            context.config.title,
+            context.config.windowWidth,
+            context.config.windowHeight,
+            context.config.resizable,
+            context.config.borderless,
+            context.config.opacity,
+            context.config.alwaysOnTop
+        );
         context.backBuffer.resize(static_cast<std::size_t>(context.config.renderWidth * context.config.renderHeight));
         context.renderer.Attach(context.backBuffer.data(), context.config.renderWidth, context.config.renderHeight);
         context.renderer.ResetCamera();

@@ -4,16 +4,16 @@
 
 Detailed Korean guide: `docs/HONTO_ENGINE_GUIDE_KO.md`
 
-This first version focuses on the foundation:
+This version now covers the core runtime features most people expect when prototyping a 2D engine:
 
 - a native Windows window built with Win32
 - a software 2D renderer with a pixel backbuffer
 - scenes, entities, transforms, sprites, and simple rigid bodies
 - a cocos2d-x style code-first scene graph with nodes, layers, and sprites
-- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI/buttons, mouse input, audio buses, level files, scene transitions, and multiple windows
+- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI/buttons, mouse input, audio buses, level files, scene transitions, multiverse-style window travel, and runtime window styling
 - keyboard and mouse input
 - level loading from `.honto`, HonTo JSON, and Tiled-style JSON
-- a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, button clicks, JSON/Tiled loading, audio mixer controls, and a DOOM-style 2.5D scene switch
+- a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, button clicks, JSON/Tiled loading, audio mixer controls, multiverse window travel, and a DOOM-style 2.5D scene with doors, fog, sprites, a weapon overlay, and a minimap
 
 ## Why this structure
 
@@ -210,7 +210,7 @@ int main()
 
 Useful helpers in this style:
 
-- `honto::hontoGame(...)`, `game.hontoWindow(...)`, `game.hontoOpenWindow(...)`
+- `honto::hontoGame(...)`, `game.hontoWindow(...)`, `game.hontoWindowId(...)`, `game.hontoBorderless(...)`, `game.hontoResizable(...)`, `game.hontoOpacity(...)`, `game.hontoTopMost(...)`, `game.hontoOpenWindow(...)`
 - `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`, `stage.hontoTileMap(...)`, `stage.hontoText(...)`, `stage.hontoBar(...)`, `stage.hontoButton(...)`
 - `actor.hontoAt(...)`, `actor.hontoMove(...)`, `actor.hontoPaint(...)`, `actor.hontoLayer(...)`
 - `actor.hontoUseGravity()`, `actor.hontoCollideWithMap(...)`, `actor.hontoJumpWhenPressed(...)`
@@ -219,8 +219,44 @@ Useful helpers in this style:
 - `actor.hontoAnimateFrames().hontoTexture(...).hontoFrameSize(...).hontoFrames(...).hontoFPS(...).hontoLoop().hontoPlay()`
 - `stage.hontoEveryFrame(...)`, `stage.hontoWhenPressed(...)`, `stage.hontoFind("name")`
 - `stage.hontoPlayTone(...)`, `stage.hontoPlaySound(...)`, `stage.hontoPlayMusic(...)`, `stage.hontoPlayOnBus(...)`, `stage.hontoSetMasterVolume(...)`
-- `stage.hontoGoWithFade(...)`, `honto::hontoFade(...)`
+- `stage.hontoGoWithFade(...)`, `stage.hontoGoWindowWithFade(...)`, `stage.hontoFocusWindow(...)`, `honto::hontoFade(...)`
+- `stage.hontoWindowOpacity(...)`, `stage.hontoWindowBorderless(...)`, `stage.hontoWindowResizable(...)`, `stage.hontoWindowTopMost(...)`, `stage.hontoWindowSize(...)`, `stage.hontoWindowPosition(...)`, `stage.hontoWindowCenter()`
+- `raycast.hontoDoor(...)`, `raycast.hontoDoorTexture(...)`, `raycast.hontoThingTexture(...)`, `raycast.hontoWeapon(...)`, `raycast.hontoWeaponBob(...)`, `raycast.hontoFog(...)`
 - `honto::hontoLoadLevel(...)`, `honto::hontoSaveLevel(...)`, `honto::hontoFindLevelEntity(...)`
+
+## Multiverse windows and DOOM helpers
+
+The sandbox now demonstrates a simple "multiverse" workflow: one window can replace the scene inside another window and optionally focus it.
+
+```cpp
+stage.hontoGoWindowWithFade(
+    "honto Multiverse Window",
+    BuildMultiverseScene,
+    0.7f,
+    honto::hontoRGBA(22, 32, 58),
+    true
+);
+```
+
+Inside that other window, you can change the host window itself at runtime:
+
+```cpp
+stage.hontoWindowBorderless(true)
+    .hontoWindowOpacity(0.82f)
+    .hontoWindowResizable(false)
+    .hontoWindowTopMost(true)
+    .hontoWindowSize(1120, 640)
+    .hontoWindowCenter();
+```
+
+The DOOM-style `RaycastView` also grew beyond plain walls:
+
+- openable doors with `E` or `Enter`
+- sprite billboards for enemies and props
+- fog blending for depth
+- shift-to-run movement
+- a weapon overlay with bobbing and muzzle flash
+- a toggleable minimap with `Tab` or `M`
 
 If you prefer the more traditional engine style, the older scene-subclass API still works:
 
@@ -257,9 +293,9 @@ private:
 
 ## Next milestones
 
-1. richer widgets such as panels, sliders, and draggable windows
-2. sprite/font/audio asset import polish beyond BMP/PNG/WAV basics
-3. particle and camera effect helpers
-4. editor tooling and scene serialization workflow
-5. editor and project format
+1. richer widgets such as sliders, checkboxes, text input, and draggable panels
+2. particle emitters, camera shake, and post-effect style helpers
+3. enemy AI, triggers, and pathfinding helpers for real gameplay loops
+4. editor tooling, scene inspectors, and stronger project serialization
+5. content pipeline polish for sprite sheets, fonts, and packaged assets
 6. scripting layer, such as Lua or C# embedding

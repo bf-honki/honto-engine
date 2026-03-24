@@ -30,6 +30,7 @@
 namespace honto
 {
     class Application;
+    class Window;
     struct SceneTransition;
 
     class Node : public std::enable_shared_from_this<Node>
@@ -258,8 +259,11 @@ namespace honto
 
         Vec2 GetVisibleSize() const;
         Renderer2D* GetRenderer() const;
+        Window* GetWindow() const;
         void ReplaceScene(std::unique_ptr<Scene> scene);
         void ReplaceScene(std::unique_ptr<Scene> scene, const SceneTransition& transition);
+        bool ReplaceSceneInWindow(const std::string& windowIdOrTitle, std::unique_ptr<Scene> scene, const SceneTransition& transition, bool focusWindow = false);
+        bool FocusWindow(const std::string& windowIdOrTitle) const;
 
     private:
         friend class Application;

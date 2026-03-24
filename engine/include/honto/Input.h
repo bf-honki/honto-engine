@@ -16,16 +16,25 @@ namespace honto
 {
     enum class KeyCode : int
     {
+        Tab = VK_TAB,
         Left = VK_LEFT,
         Right = VK_RIGHT,
         Up = VK_UP,
         Down = VK_DOWN,
         Escape = VK_ESCAPE,
         Enter = VK_RETURN,
+        Shift = VK_SHIFT,
+        F1 = VK_F1,
+        F2 = VK_F2,
+        F3 = VK_F3,
+        F4 = VK_F4,
         F5 = VK_F5,
         Space = VK_SPACE,
         A = 'A',
         D = 'D',
+        E = 'E',
+        M = 'M',
+        Q = 'Q',
         S = 'S',
         W = 'W'
     };

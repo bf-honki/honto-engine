@@ -10,22 +10,26 @@ namespace
 
 namespace honto
 {
-    Window::Window(const std::string& title, int width, int height)
+    Window::Window(const std::string& title, int width, int height, bool resizable, bool borderless, float opacity, bool alwaysOnTop)
         : m_Instance(GetModuleHandleA(nullptr)),
           m_Title(title),
           m_ClientWidth(width),
-          m_ClientHeight(height)
+          m_ClientHeight(height),
+          m_Resizable(resizable),
+          m_Borderless(borderless),
+          m_AlwaysOnTop(alwaysOnTop),
+          m_Opacity(std::clamp(opacity, 0.1f, 1.0f))
     {
         RegisterWindowClass();
 
-        RECT rect { 0, 0, width, height };
-        AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+        const RECT rect = MakeWindowRect(width, height);
+        const DWORD exStyle = WindowExStyle();
 
         m_Handle = CreateWindowExA(
-            0,
+            exStyle,
             kWindowClassName,
             m_Title.c_str(),
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+            WindowStyle(),
             CW_USEDEFAULT,
             CW_USEDEFAULT,
             rect.right - rect.left,
@@ -41,6 +45,7 @@ namespace honto
             throw std::runtime_error("Failed to create Win32 window.");
         }
 
+        ApplyStyle();
         ShowWindow(m_Handle, SW_SHOW);
         UpdateWindow(m_Handle);
     }
@@ -129,6 +134,125 @@ namespace honto
         {
             SetWindowTextA(m_Handle, m_Title.c_str());
         }
+    }
+
+    void Window::SetOpacity(float opacity)
+    {
+        m_Opacity = std::clamp(opacity, 0.1f, 1.0f);
+        ApplyStyle();
+    }
+
+    float Window::GetOpacity() const
+    {
+        return m_Opacity;
+    }
+
+    void Window::SetBorderless(bool enabled)
+    {
+        m_Borderless = enabled;
+        ApplyStyle();
+    }
+
+    bool Window::IsBorderless() const
+    {
+        return m_Borderless;
+    }
+
+    void Window::SetResizable(bool enabled)
+    {
+        m_Resizable = enabled;
+        ApplyStyle();
+    }
+
+    bool Window::IsResizable() const
+    {
+        return m_Resizable;
+    }
+
+    void Window::SetAlwaysOnTop(bool enabled)
+    {
+        m_AlwaysOnTop = enabled;
+        ApplyStyle();
+    }
+
+    bool Window::IsAlwaysOnTop() const
+    {
+        return m_AlwaysOnTop;
+    }
+
+    void Window::SetClientSize(int width, int height)
+    {
+        m_ClientWidth = std::max(1, width);
+        m_ClientHeight = std::max(1, height);
+
+        if (m_Handle == nullptr)
+        {
+            return;
+        }
+
+        const RECT rect = MakeWindowRect(m_ClientWidth, m_ClientHeight);
+        SetWindowPos(
+            m_Handle,
+            nullptr,
+            0,
+            0,
+            rect.right - rect.left,
+            rect.bottom - rect.top,
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
+        );
+    }
+
+    void Window::SetPosition(int x, int y)
+    {
+        if (m_Handle == nullptr)
+        {
+            return;
+        }
+
+        SetWindowPos(
+            m_Handle,
+            nullptr,
+            x,
+            y,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+        );
+    }
+
+    void Window::Center()
+    {
+        if (m_Handle == nullptr)
+        {
+            return;
+        }
+
+        RECT windowRect {};
+        GetWindowRect(m_Handle, &windowRect);
+
+        HMONITOR monitor = MonitorFromWindow(m_Handle, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO monitorInfo {};
+        monitorInfo.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfoA(monitor, &monitorInfo);
+
+        const RECT work = monitorInfo.rcWork;
+        const int width = windowRect.right - windowRect.left;
+        const int height = windowRect.bottom - windowRect.top;
+        const int x = work.left + ((work.right - work.left - width) / 2);
+        const int y = work.top + ((work.bottom - work.top - height) / 2);
+        SetPosition(x, y);
+    }
+
+    void Window::Focus()
+    {
+        if (m_Handle == nullptr)
+        {
+            return;
+        }
+
+        ShowWindow(m_Handle, SW_SHOW);
+        SetForegroundWindow(m_Handle);
+        SetFocus(m_Handle);
     }
 
     bool Window::GetMouseRenderPosition(int sourceWidth, int sourceHeight, Vec2& outPosition) const
@@ -246,5 +370,73 @@ namespace honto
         }
 
         s_IsRegistered = true;
+    }
+
+    void Window::ApplyStyle()
+    {
+        if (m_Handle == nullptr)
+        {
+            return;
+        }
+
+        SetWindowLongPtrA(m_Handle, GWL_STYLE, static_cast<LONG_PTR>(WindowStyle()));
+        SetWindowLongPtrA(m_Handle, GWL_EXSTYLE, static_cast<LONG_PTR>(WindowExStyle()));
+
+        if (m_Opacity < 0.999f)
+        {
+            SetLayeredWindowAttributes(
+                m_Handle,
+                0,
+                static_cast<BYTE>(std::clamp(m_Opacity, 0.1f, 1.0f) * 255.0f),
+                LWA_ALPHA
+            );
+        }
+
+        const RECT rect = MakeWindowRect(m_ClientWidth, m_ClientHeight);
+        SetWindowPos(
+            m_Handle,
+            m_AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST,
+            0,
+            0,
+            rect.right - rect.left,
+            rect.bottom - rect.top,
+            SWP_NOMOVE | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW
+        );
+    }
+
+    DWORD Window::WindowStyle() const
+    {
+        DWORD style = WS_VISIBLE;
+        if (m_Borderless)
+        {
+            style |= WS_POPUP;
+            return style;
+        }
+
+        style |= WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+        if (m_Resizable)
+        {
+            style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+        }
+
+        return style;
+    }
+
+    DWORD Window::WindowExStyle() const
+    {
+        DWORD exStyle = 0;
+        if (m_Opacity < 0.999f)
+        {
+            exStyle |= WS_EX_LAYERED;
+        }
+
+        return exStyle;
+    }
+
+    RECT Window::MakeWindowRect(int clientWidth, int clientHeight) const
+    {
+        RECT rect { 0, 0, clientWidth, clientHeight };
+        AdjustWindowRectEx(&rect, WindowStyle(), FALSE, WindowExStyle());
+        return rect;
     }
 }

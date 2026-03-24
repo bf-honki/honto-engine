@@ -15,12 +15,17 @@ namespace honto
 {
     struct AppConfig
     {
+        std::string windowId;
         std::string title = "HonTo Engine";
         int windowWidth = 1280;
         int windowHeight = 720;
         int renderWidth = 320;
         int renderHeight = 180;
         Color clearColor { 16, 18, 28, 255 };
+        bool resizable = true;
+        bool borderless = false;
+        bool alwaysOnTop = false;
+        float opacity = 1.0f;
     };
 
     struct SceneTransition
@@ -80,6 +85,11 @@ namespace honto
             return ActiveContext().renderer;
         }
 
+        bool SetSceneForWindow(const std::string& windowIdOrTitle, std::unique_ptr<Scene> scene, const SceneTransition& transition = {}, bool focusWindow = false);
+        bool FocusWindow(const std::string& windowIdOrTitle);
+        Window* FindWindow(const std::string& windowIdOrTitle);
+        const Window* FindWindow(const std::string& windowIdOrTitle) const;
+
         Window& GetWindow()
         {
             return *ActiveContext().window;
@@ -103,6 +113,8 @@ namespace honto
         static AppConfig SanitizeConfig(AppConfig config);
         WindowContext& ActiveContext();
         const WindowContext& ActiveContext() const;
+        WindowContext* FindContext(const std::string& windowIdOrTitle);
+        const WindowContext* FindContext(const std::string& windowIdOrTitle) const;
         void InitializeContext(WindowContext& context, AppConfig config, std::unique_ptr<Scene> scene, bool closeStopsGame);
         void ShutdownContext(WindowContext& context);
         void RequestSceneChange(WindowContext& context, std::unique_ptr<Scene> scene, const SceneTransition& transition);

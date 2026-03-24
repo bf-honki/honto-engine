@@ -2510,6 +2510,16 @@ namespace HonTo
             return *this;
         }
 
+        RaycastActor& hontoRunMultiplier(float multiplier)
+        {
+            if (const auto view = View())
+            {
+                view->SetRunMultiplier(multiplier);
+            }
+
+            return *this;
+        }
+
         RaycastActor& hontoFloor(Color color)
         {
             if (const auto view = View())
@@ -2520,6 +2530,89 @@ namespace HonTo
             return *this;
         }
 
+        RaycastActor& hontoDoor(char cell, Color color, float openSeconds = 0.8f, float holdSeconds = 1.6f)
+        {
+            if (const auto view = View())
+            {
+                view->SetDoor(cell, color, openSeconds, holdSeconds);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoDoorTexture(char cell, const std::shared_ptr<Texture>& texture)
+        {
+            if (const auto view = View())
+            {
+                view->SetDoorTexture(cell, texture);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoThing(
+            const std::string& name,
+            float x,
+            float y,
+            float width,
+            float height,
+            Color tint = RGBA(255, 255, 255),
+            float bobAmount = 0.0f,
+            float bobSpeed = 0.0f
+        )
+        {
+            if (const auto view = View())
+            {
+                view->AddThing(name, { x, y }, { width, height }, tint, nullptr, bobAmount, bobSpeed);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoThingTexture(
+            const std::string& name,
+            float x,
+            float y,
+            float width,
+            float height,
+            const std::shared_ptr<Texture>& texture,
+            Color tint = RGBA(255, 255, 255),
+            float bobAmount = 0.0f,
+            float bobSpeed = 0.0f
+        )
+        {
+            if (const auto view = View())
+            {
+                view->AddThing(name, { x, y }, { width, height }, tint, texture, bobAmount, bobSpeed);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoThingTexture(
+            const std::string& name,
+            float x,
+            float y,
+            float width,
+            float height,
+            const std::string& path,
+            Color tint = RGBA(255, 255, 255),
+            float bobAmount = 0.0f,
+            float bobSpeed = 0.0f
+        )
+        {
+            return hontoThingTexture(name, x, y, width, height, LoadTexture(path), tint, bobAmount, bobSpeed);
+        }
+
+        RaycastActor& hontoClearThings()
+        {
+            if (const auto view = View())
+            {
+                view->ClearThings();
+            }
+
+            return *this;
+        }
         RaycastActor& hontoCeiling(Color color)
         {
             if (const auto view = View())
@@ -2557,6 +2650,41 @@ namespace HonTo
                 view->SetMoveSpeed(moveSpeed);
                 view->SetTurnSpeed(turnSpeed);
                 view->EnableDoomControls(true);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoWeapon(const std::shared_ptr<Texture>& texture, float width, float height, Color tint = RGBA(255, 255, 255))
+        {
+            if (const auto view = View())
+            {
+                view->SetWeapon(texture, { width, height }, tint);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoWeapon(const std::string& path, float width, float height, Color tint = RGBA(255, 255, 255))
+        {
+            return hontoWeapon(LoadTexture(path), width, height, tint);
+        }
+
+        RaycastActor& hontoWeaponBob(float amount, float speed)
+        {
+            if (const auto view = View())
+            {
+                view->SetWeaponBobbing(amount, speed);
+            }
+
+            return *this;
+        }
+
+        RaycastActor& hontoFog(Color color, float strength = 0.35f)
+        {
+            if (const auto view = View())
+            {
+                view->SetFog(color, strength);
             }
 
             return *this;
@@ -2711,6 +2839,111 @@ namespace HonTo
             }
 
             return m_State->gravity;
+        }
+
+        Stage& WindowOpacity(float opacity) const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->SetOpacity(opacity);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& WindowBorderless(bool enabled = true) const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->SetBorderless(enabled);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& WindowResizable(bool enabled = true) const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->SetResizable(enabled);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& WindowTopMost(bool enabled = true) const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->SetAlwaysOnTop(enabled);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& WindowSize(int width, int height) const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->SetClientSize(width, height);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& WindowPosition(int x, int y) const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->SetPosition(x, y);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& WindowCenter() const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->Center();
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& hontoWindowOpacity(float opacity) const
+        {
+            return WindowOpacity(opacity);
+        }
+
+        Stage& hontoWindowBorderless(bool enabled = true) const
+        {
+            return WindowBorderless(enabled);
+        }
+
+        Stage& hontoWindowResizable(bool enabled = true) const
+        {
+            return WindowResizable(enabled);
+        }
+
+        Stage& hontoWindowTopMost(bool enabled = true) const
+        {
+            return WindowTopMost(enabled);
+        }
+
+        Stage& hontoWindowSize(int width, int height) const
+        {
+            return WindowSize(width, height);
+        }
+
+        Stage& hontoWindowPosition(int x, int y) const
+        {
+            return WindowPosition(x, y);
+        }
+
+        Stage& hontoWindowCenter() const
+        {
+            return WindowCenter();
         }
 
         Vec2 MousePosition() const
@@ -3263,6 +3496,63 @@ namespace HonTo
             WhenClicked(actor, std::move(fn), button);
         }
 
+        void GoWindow(
+            const std::string& windowIdOrTitle,
+            std::function<void(Stage&)> setup,
+            const Transition& transition = {},
+            bool focusWindow = true
+        ) const
+        {
+            honto::Director::Get().ReplaceSceneInWindow(
+                windowIdOrTitle,
+                std::make_unique<detail::ScriptScene>(std::move(setup)),
+                transition,
+                focusWindow
+            );
+        }
+
+        void GoWindowWithFade(
+            const std::string& windowIdOrTitle,
+            std::function<void(Stage&)> setup,
+            float seconds = 0.5f,
+            Color color = Color { 0, 0, 0, 255 },
+            bool focusWindow = true
+        ) const
+        {
+            GoWindow(windowIdOrTitle, std::move(setup), Fade(seconds, color), focusWindow);
+        }
+
+        void FocusWindow(const std::string& windowIdOrTitle) const
+        {
+            honto::Director::Get().FocusWindow(windowIdOrTitle);
+        }
+
+        void hontoGoWindow(
+            const std::string& windowIdOrTitle,
+            std::function<void(Stage&)> setup,
+            const Transition& transition = {},
+            bool focusWindow = true
+        ) const
+        {
+            GoWindow(windowIdOrTitle, std::move(setup), transition, focusWindow);
+        }
+
+        void hontoGoWindowWithFade(
+            const std::string& windowIdOrTitle,
+            std::function<void(Stage&)> setup,
+            float seconds = 0.5f,
+            Color color = Color { 0, 0, 0, 255 },
+            bool focusWindow = true
+        ) const
+        {
+            GoWindowWithFade(windowIdOrTitle, std::move(setup), seconds, color, focusWindow);
+        }
+
+        void hontoFocusWindow(const std::string& windowIdOrTitle) const
+        {
+            FocusWindow(windowIdOrTitle);
+        }
+
         void WhilePressing(Key key, std::function<void(float)> fn)
         {
             EveryFrame(
@@ -3441,9 +3731,64 @@ namespace HonTo
             return *this;
         }
 
+        GameBuilder& WindowId(std::string windowId)
+        {
+            m_Config.windowId = std::move(windowId);
+            return *this;
+        }
+
+        GameBuilder& Borderless(bool enabled = true)
+        {
+            m_Config.borderless = enabled;
+            return *this;
+        }
+
+        GameBuilder& Resizable(bool enabled = true)
+        {
+            m_Config.resizable = enabled;
+            return *this;
+        }
+
+        GameBuilder& Opacity(float opacity)
+        {
+            m_Config.opacity = std::clamp(opacity, 0.1f, 1.0f);
+            return *this;
+        }
+
+        GameBuilder& TopMost(bool enabled = true)
+        {
+            m_Config.alwaysOnTop = enabled;
+            return *this;
+        }
+
         GameBuilder& hontoTitle(std::string title)
         {
             return Title(std::move(title));
+        }
+
+        GameBuilder& hontoWindowId(std::string windowId)
+        {
+            return WindowId(std::move(windowId));
+        }
+
+        GameBuilder& hontoBorderless(bool enabled = true)
+        {
+            return Borderless(enabled);
+        }
+
+        GameBuilder& hontoResizable(bool enabled = true)
+        {
+            return Resizable(enabled);
+        }
+
+        GameBuilder& hontoOpacity(float opacity)
+        {
+            return Opacity(opacity);
+        }
+
+        GameBuilder& hontoTopMost(bool enabled = true)
+        {
+            return TopMost(enabled);
         }
 
         GameBuilder& Window(int width, int height)

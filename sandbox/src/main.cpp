@@ -41,13 +41,13 @@ namespace
 
     const std::vector<std::string> kDungeonMap {
         "##########",
-        "#...A....#",
+        "#...A..D.#",
         "#.#.#.##A#",
-        "#.#...#..#",
+        "#.#...#D.#",
         "#.###.#A.#",
         "#.....#..#",
         "#A#####..#",
-        "#........#",
+        "#..D.....#",
         "##########"
     };
 
@@ -89,6 +89,7 @@ namespace
 
     void BuildPlatformScene(honto::hontoStage& stage);
     void BuildDoomScene(honto::hontoStage& stage);
+    void BuildMultiverseScene(honto::hontoStage& stage);
     void BuildToolsWindow(honto::hontoStage& stage);
 
     void BuildPlatformScene(honto::hontoStage& stage)
@@ -105,7 +106,7 @@ namespace
         const honto::hontoVec2 playerStart = playerSpawn != nullptr ? playerSpawn->position : honto::hontoVec2 { 36.0f, 40.0f };
         const honto::hontoVec2 portalStart = portalSpawn != nullptr ? portalSpawn->position : honto::hontoVec2 { 594.0f, 140.0f };
         const std::string hudTitle = titleEntity != nullptr && !titleEntity->text.empty() ? titleEntity->text : level->title;
-        const std::string hudHint = hintEntity != nullptr && !hintEntity->text.empty() ? hintEntity->text : "A/D MOVE  SPACE JUMP  ENTER PORTAL";
+        const std::string hudHint = hintEntity != nullptr && !hintEntity->text.empty() ? hintEntity->text : "A/D MOVE  SPACE JUMP  ENTER DOOM  Q MULTIVERSE";
 
         auto tileSheet = honto::hontoFrameSheetTexture(
             16,
@@ -131,7 +132,7 @@ namespace
             4
         );
 
-        honto::hontoPrint("Platform scene: A/D move, Space jump, F5 save level, Enter opens the 2.5D dungeon.");
+        honto::hontoPrint("Platform scene: A/D move, Space jump, F5 save level, Enter opens DOOM, Q travels to the multiverse window.");
 
         stage.hontoBackground(18, 22, 34);
         stage.hontoGravity(0.0f, 760.0f);
@@ -258,10 +259,10 @@ namespace
                 if (player.hontoTouching(portal) && !*portalUnlocked)
                 {
                     *portalUnlocked = true;
-                    statusLabel.hontoTextValue("STATUS: PORTAL OPEN");
+                    statusLabel.hontoTextValue("STATUS: ENTER DOOM  Q MULTIVERSE");
                     stage.hontoPlayTone(980, 120);
                     stage.hontoPlayAlias("SystemAsterisk");
-                    honto::hontoPrint("Portal unlocked. Press Enter.");
+                    honto::hontoPrint("Portal unlocked. Press Enter for DOOM or Q for the multiverse window.");
                 }
                 else if (!*portalUnlocked)
                 {
@@ -288,12 +289,27 @@ namespace
             }
         );
 
+        stage.hontoWhenPressed(
+            honto::hontoKey::Q,
+            [stage, portalUnlocked]()
+            {
+                if (!*portalUnlocked)
+                {
+                    stage.hontoPlayTone(220, 90);
+                    return;
+                }
+
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                stage.hontoGoWindowWithFade("honto Multiverse Window", BuildMultiverseScene, 0.7f, honto::hontoRGBA(22, 32, 58), true);
+            }
+        );
+
         (void)saveLabel;
     }
 
     void BuildDoomScene(honto::hontoStage& stage)
     {
-        honto::hontoPrint("Raycast scene: W/S move, A/D strafe, Left/Right turn, Enter returns.");
+        honto::hontoPrint("DOOM scene: W/S move, A/D strafe, Shift run, E open doors, Tab map, Q multiverse, Enter back.");
 
         auto wallA = honto::hontoCheckerTexture(
             32,
@@ -309,6 +325,36 @@ namespace
             honto::hontoRGBA(48, 82, 126),
             6
         );
+        auto doorTexture = honto::hontoCheckerTexture(
+            32,
+            32,
+            honto::hontoRGBA(196, 156, 94),
+            honto::hontoRGBA(128, 82, 42),
+            4
+        );
+        auto impTexture = honto::hontoFrameSheetTexture(
+            32,
+            48,
+            {
+                honto::hontoRGBA(222, 96, 72)
+            },
+            1
+        );
+        auto barrelTexture = honto::hontoFrameSheetTexture(
+            24,
+            32,
+            {
+                honto::hontoRGBA(152, 132, 86)
+            },
+            1
+        );
+        auto weaponTexture = honto::hontoCheckerTexture(
+            96,
+            64,
+            honto::hontoRGBA(64, 64, 72),
+            honto::hontoRGBA(132, 132, 148),
+            6
+        );
 
         stage.hontoBackground(10, 12, 16);
 
@@ -320,12 +366,21 @@ namespace
             .hontoViewDegrees(68.0f)
             .hontoMoveSpeed(2.8f)
             .hontoTurnSpeed(2.2f)
+            .hontoRunMultiplier(1.8f)
             .hontoFloor(honto::hontoRGBA(38, 36, 44))
             .hontoCeiling(honto::hontoRGBA(18, 22, 34))
+            .hontoFog(honto::hontoRGBA(14, 18, 28), 0.42f)
             .hontoWall('#', honto::hontoRGBA(174, 112, 92))
             .hontoWallTexture('#', wallA)
             .hontoWall('A', honto::hontoRGBA(92, 140, 196))
             .hontoWallTexture('A', wallB)
+            .hontoDoor('D', honto::hontoRGBA(206, 168, 102), 0.65f, 2.0f)
+            .hontoDoorTexture('D', doorTexture)
+            .hontoThingTexture("imp_1", 7.6f, 1.8f, 0.9f, 1.3f, impTexture, honto::hontoRGBA(255, 196, 180), 0.06f, 4.8f)
+            .hontoThingTexture("imp_2", 7.3f, 6.6f, 0.9f, 1.3f, impTexture, honto::hontoRGBA(255, 180, 164), 0.08f, 5.4f)
+            .hontoThingTexture("barrel", 3.4f, 7.1f, 0.8f, 1.0f, barrelTexture, honto::hontoRGBA(220, 210, 188))
+            .hontoWeapon(weaponTexture, 140.0f, 84.0f, honto::hontoRGBA(255, 255, 255))
+            .hontoWeaponBob(3.8f, 10.0f)
             .hontoMiniMap(true, 7.0f)
             .hontoDoomControls();
 
@@ -335,9 +390,21 @@ namespace
         stage.hontoOutline("hud_border", 320.0f, 24.0f, honto::hontoRGBA(78, 88, 114), 1)
             .hontoAt(0.0f, 0.0f)
             .hontoLayer(3);
-        stage.hontoText("doom_hint", "W/S MOVE  A/D STRAFE  ENTER BACK", honto::hontoRGBA(238, 245, 255), 1)
-            .hontoAt(8.0f, 8.0f)
+        stage.hontoText("doom_hint", "W/S MOVE  A/D STRAFE  SHIFT RUN  E DOOR", honto::hontoRGBA(238, 245, 255), 1)
+            .hontoAt(8.0f, 4.0f)
             .hontoLayer(4);
+        stage.hontoText("doom_hint_2", "TAB MAP  Q MULTIVERSE  ENTER BACK", honto::hontoRGBA(190, 204, 224), 1)
+            .hontoAt(8.0f, 12.0f)
+            .hontoLayer(4);
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::Q,
+            [stage]()
+            {
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                stage.hontoGoWindowWithFade("honto Multiverse Window", BuildMultiverseScene, 0.7f, honto::hontoRGBA(22, 32, 58), true);
+            }
+        );
 
         stage.hontoWhenPressed(
             honto::hontoKey::Enter,
@@ -350,6 +417,160 @@ namespace
         );
 
         (void)raycast;
+    }
+
+    void BuildMultiverseScene(honto::hontoStage& stage)
+    {
+        auto borderless = std::make_shared<bool>(true);
+        auto resizable = std::make_shared<bool>(false);
+        auto topMost = std::make_shared<bool>(false);
+        auto opacity = std::make_shared<float>(0.92f);
+        auto sizeIndex = std::make_shared<int>(0);
+        const std::vector<honto::hontoVec2> windowSizes {
+            { 900.0f, 540.0f },
+            { 1120.0f, 640.0f },
+            { 760.0f, 460.0f }
+        };
+
+        honto::hontoPrint("Multiverse window: F1 borderless, F2 opacity, F3 resizable, F4 size, M topmost, Q main, Enter doom.");
+
+        stage.hontoWindowBorderless(*borderless)
+            .hontoWindowResizable(*resizable)
+            .hontoWindowOpacity(*opacity)
+            .hontoWindowTopMost(*topMost)
+            .hontoWindowCenter();
+
+        stage.hontoBackground(12, 18, 34);
+        stage.hontoFill("nebula", 320.0f, 180.0f, honto::hontoRGBA(26, 38, 72, 180))
+            .hontoAt(0.0f, 0.0f)
+            .hontoLayer(0);
+        stage.hontoOutline("frame", 318.0f, 178.0f, honto::hontoRGBA(116, 162, 255), 1)
+            .hontoAt(1.0f, 1.0f)
+            .hontoLayer(1);
+
+        auto orbit = stage.hontoChecker(
+            "orbit",
+            34.0f,
+            34.0f,
+            honto::hontoRGBA(104, 148, 255),
+            honto::hontoRGBA(44, 84, 188),
+            4
+        )
+            .hontoAt(146.0f, 74.0f)
+            .hontoLayer(2);
+        orbit.hontoAnimate()
+            .hontoScaleTo(1.22f)
+            .hontoPaintTo(honto::hontoRGBA(190, 226, 255))
+            .hontoIn(1.0f)
+            .hontoPingPong()
+            .hontoLoop()
+            .hontoPlay();
+
+        auto traveler = stage.hontoBox("traveler", 16.0f, 16.0f, honto::hontoRGBA(126, 255, 196))
+            .hontoAt(28.0f, 126.0f)
+            .hontoLayer(3)
+            .hontoMoveWithArrows(84.0f)
+            .hontoKeepInside(8.0f, 52.0f, 296.0f, 156.0f);
+
+        auto status = stage.hontoText("verse_status", "MULTIVERSE READY", honto::hontoRGBA(255, 242, 184), 1)
+            .hontoAt(10.0f, 10.0f)
+            .hontoLayer(4);
+        auto controlsA = stage.hontoText("verse_a", "F1 FRAME  F2 GLASS  F3 RESIZE  F4 SIZE", honto::hontoRGBA(232, 240, 255), 1)
+            .hontoAt(10.0f, 24.0f)
+            .hontoLayer(4);
+        auto controlsB = stage.hontoText("verse_b", "M TOPMOST  Q MAIN WORLD  ENTER DOOM WORLD", honto::hontoRGBA(194, 210, 230), 1)
+            .hontoAt(10.0f, 36.0f)
+            .hontoLayer(4);
+        auto mouseText = stage.hontoText("verse_mouse", MakeMouseText(stage), honto::hontoRGBA(166, 188, 216), 1)
+            .hontoAt(10.0f, 164.0f)
+            .hontoLayer(4);
+
+        (void)controlsA;
+        (void)controlsB;
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::F1,
+            [stage, borderless, status]()
+            {
+                *borderless = !*borderless;
+                stage.hontoWindowBorderless(*borderless).hontoWindowCenter();
+                status.hontoTextValue(*borderless ? "MULTIVERSE: BORDERLESS" : "MULTIVERSE: FRAMED");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::F2,
+            [stage, opacity, status]()
+            {
+                *opacity = *opacity > 0.95f ? 0.82f : 1.0f;
+                stage.hontoWindowOpacity(*opacity);
+                status.hontoTextValue(*opacity < 1.0f ? "MULTIVERSE: GLASS MODE" : "MULTIVERSE: SOLID MODE");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::F3,
+            [stage, resizable, status]()
+            {
+                *resizable = !*resizable;
+                stage.hontoWindowResizable(*resizable);
+                status.hontoTextValue(*resizable ? "MULTIVERSE: RESIZABLE" : "MULTIVERSE: FIXED");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::F4,
+            [stage, sizeIndex, status, windowSizes]()
+            {
+                *sizeIndex = (*sizeIndex + 1) % static_cast<int>(windowSizes.size());
+                const honto::hontoVec2 size = windowSizes[static_cast<std::size_t>(*sizeIndex)];
+                stage.hontoWindowSize(static_cast<int>(size.x), static_cast<int>(size.y)).hontoWindowCenter();
+                status.hontoTextValue("MULTIVERSE: SIZE " + std::to_string(static_cast<int>(size.x)) + "x" + std::to_string(static_cast<int>(size.y)));
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::M,
+            [stage, topMost, status]()
+            {
+                *topMost = !*topMost;
+                stage.hontoWindowTopMost(*topMost);
+                status.hontoTextValue(*topMost ? "MULTIVERSE: TOPMOST" : "MULTIVERSE: NORMAL");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::Q,
+            [stage]()
+            {
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                stage.hontoGoWindowWithFade("honto Engine Feature Sandbox", BuildPlatformScene, 0.7f, honto::hontoRGBA(18, 22, 34), true);
+            }
+        );
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::Enter,
+            [stage]()
+            {
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                stage.hontoGoWindowWithFade("honto Engine Feature Sandbox", BuildDoomScene, 0.7f, honto::hontoRGBA(12, 14, 20), true);
+            }
+        );
+
+        stage.hontoEveryFrame(
+            [stage, mouseText, traveler, orbit, t = 0.0f](float deltaTime) mutable
+            {
+                t += deltaTime;
+                orbit.hontoAt(146.0f + (std::sin(t * 1.4f) * 18.0f), 74.0f + (std::cos(t * 1.2f) * 10.0f));
+                traveler.hontoPaint(stage.hontoHasMouse() ? honto::hontoRGBA(166, 255, 220) : honto::hontoRGBA(126, 255, 196));
+                mouseText.hontoTextValue(MakeMouseText(stage));
+            }
+        );
     }
 
     void BuildToolsWindow(honto::hontoStage& stage)
@@ -627,9 +848,19 @@ namespace
 int main()
 {
     return honto::hontoGame("honto Engine Feature Sandbox")
+        .hontoWindowId("main_world")
         .hontoWindow(1280, 720)
         .hontoRender(320, 180)
         .hontoClear(honto::hontoRGBA(16, 18, 26))
+        .hontoOpenWindow(
+            "honto Multiverse Window",
+            900,
+            560,
+            320,
+            180,
+            BuildMultiverseScene,
+            honto::hontoRGBA(12, 18, 34)
+        )
         .hontoOpenWindow(
             "honto Tool Window",
             960,

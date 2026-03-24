@@ -14,7 +14,8 @@
 - 레벨 파일 저장/불러오기, JSON 저장/불러오기, Tiled 스타일 JSON 로딩
 - WAV 재생, 시스템 사운드 alias 재생, 간단 톤 재생, 오디오 버스 믹서
 - 카메라 따라가기
-- 2D 맵을 이용한 둠 스타일 2.5D 레이캐스트 화면
+- 창 간 장면 이동, 창 투명도, 창 테두리 숨기기, 창 고정, 창 크기/위치 제어
+- 2D 맵을 이용한 둠 스타일 2.5D 레이캐스트 화면, 문, 안개, 스프라이트, 무기 오버레이, 미니맵
 
 이번 버전은 Unity, Godot, cocos2d-x, Unreal의 공통 핵심 축인 `장면`, `카메라`, `에셋`, `애니메이션`, `전환`, `윈도우`, `2D/2.5D 확장성`을 우선 구현한 상태입니다.
 
@@ -220,7 +221,44 @@ return honto::hontoGame("Main")
     .hontoRun();
 ```
 
-### 12. 둠 스타일 2.5D
+### 12. 멀티버스 창 이동과 창 스타일 제어
+
+다른 창 안의 장면을 바로 바꾸고, 그 창을 앞으로 가져오게 할 수 있습니다.
+
+```cpp
+stage.hontoGoWindowWithFade(
+    "honto Multiverse Window",
+    BuildMultiverseScene,
+    0.7f,
+    honto::hontoRGBA(22, 32, 58),
+    true
+);
+```
+
+현재 장면이 떠 있는 창 자체도 바꿀 수 있습니다.
+
+```cpp
+stage.hontoWindowBorderless(true)
+    .hontoWindowOpacity(0.82f)
+    .hontoWindowResizable(false)
+    .hontoWindowTopMost(true)
+    .hontoWindowSize(1120, 640)
+    .hontoWindowCenter();
+```
+
+여기서 쓸 수 있는 대표 기능은 아래입니다.
+
+- `stage.hontoWindowOpacity(...)`
+- `stage.hontoWindowBorderless(...)`
+- `stage.hontoWindowResizable(...)`
+- `stage.hontoWindowTopMost(...)`
+- `stage.hontoWindowSize(...)`
+- `stage.hontoWindowPosition(...)`
+- `stage.hontoWindowCenter()`
+- `stage.hontoGoWindowWithFade(...)`
+- `stage.hontoFocusWindow(...)`
+
+### 13. 둠 스타일 2.5D
 
 `RaycastView`는 2D 그리드 맵을 기반으로 벽을 세워서 3D처럼 보이게 그립니다.
 
@@ -242,14 +280,35 @@ raycast.hontoMap({
         honto::hontoRGBA(118, 60, 46),
         8
     ))
+    .hontoDoor('D', honto::hontoRGBA(206, 168, 102), 0.65f, 2.0f)
+    .hontoFog(honto::hontoRGBA(14, 18, 28), 0.42f)
+    .hontoWeapon(honto::hontoCheckerTexture(
+        96, 64,
+        honto::hontoRGBA(64, 64, 72),
+        honto::hontoRGBA(132, 132, 148),
+        6
+    ), 140.0f, 84.0f, honto::hontoRGBA(255, 255, 255))
+    .hontoMiniMap(true, 7.0f)
     .hontoDoomControls();
 ```
+
+현재 `RaycastView`에는 아래 기능도 들어 있습니다.
+
+- 문 열기
+- 적/오브젝트용 빌보드 스프라이트
+- 거리 안개
+- 달리기
+- 무기 오버레이와 흔들림
+- 미니맵
 
 조작은 기본적으로 아래 방식입니다.
 
 - `W/S` 또는 `Up/Down`: 전진 / 후진
 - `A/D`: 좌우 스트레이프
 - `Left/Right`: 회전
+- `Shift`: 달리기
+- `E` 또는 `Enter`: 문 사용
+- `Tab` 또는 `M`: 미니맵 토글
 
 ## 주요 파일
 
@@ -281,6 +340,7 @@ raycast.hontoMap({
 - 메인 창과 추가 창을 모두 관리합니다.
 - 각 창마다 별도 `Renderer2D`, 백버퍼, 활성 씬을 가집니다.
 - 씬 교체 시 페이드 전환도 처리합니다.
+- 창 ID를 기준으로 다른 창의 장면 교체와 포커스 이동도 처리합니다.
 
 ### Scene Graph
 
@@ -320,6 +380,7 @@ raycast.hontoMap({
 - `Actor`는 노드 핸들 역할을 하며, 중력/점프/트윈/타일 충돌/프레임 애니메이션/UI 갱신을 쉽게 쓸 수 있습니다.
 - `TileMapActor`는 타일 정의와 충돌 맵 구성을 담당합니다.
 - `RaycastActor`는 `RaycastView`를 쉽게 설정하기 위한 전용 핸들입니다.
+- `Stage`는 창 투명도, 테두리, 리사이즈, 최상단, 포커스 이동 같은 런타임 창 제어도 제공합니다.
 
 ## 현재 제한 사항
 
@@ -328,15 +389,16 @@ raycast.hontoMap({
 - 타일 충돌은 축 정렬 박스 기준의 가벼운 플랫폼형 해결 방식입니다.
 - 타일맵 에디터와 고급 충돌 계층은 아직 없습니다.
 - 2.5D는 둠식 레이캐스트이며, 진짜 폴리곤 3D 엔진은 아닙니다.
+- 하드웨어 가속 3D 렌더러나 셰이더 파이프라인은 아직 없습니다.
 
 ## 다음에 붙이면 좋은 것
 
-1. 마우스 입력과 버튼 위젯
-2. JSON 또는 Tiled 맵 포맷 지원
-3. 오디오 믹서
-4. 파티클과 카메라 흔들림
-5. 에디터용 프로젝트 포맷
-6. 에디터 UI
+1. 슬라이더, 체크박스, 텍스트 입력 같은 고급 UI 위젯
+2. 파티클, 카메라 흔들림, 화면 효과
+3. 적 AI, 트리거, 경로 탐색
+4. 에디터용 씬 인스펙터와 프로젝트 포맷
+5. 에셋 파이프라인 강화와 패키징
+6. Lua 또는 C# 스크립팅 계층
 
 ## 주석 정책
 
