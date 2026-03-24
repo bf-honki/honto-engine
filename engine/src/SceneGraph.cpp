@@ -93,6 +93,60 @@ namespace
             }
         }
     }
+
+    honto::Vec2 MeasureTextBounds(const std::string& text, int glyphScale)
+    {
+        const int safeScale = std::max(1, glyphScale);
+        std::size_t maxColumns = 0;
+        std::size_t currentColumns = 0;
+        std::size_t lineCount = 1;
+
+        for (char character : text)
+        {
+            if (character == '\n')
+            {
+                maxColumns = std::max(maxColumns, currentColumns);
+                currentColumns = 0;
+                ++lineCount;
+                continue;
+            }
+
+            ++currentColumns;
+        }
+
+        maxColumns = std::max(maxColumns, currentColumns);
+        const float width = maxColumns == 0 ? 0.0f : static_cast<float>(((maxColumns * 6) - 1) * static_cast<std::size_t>(safeScale));
+        const float height = lineCount == 0 ? 0.0f : static_cast<float>(((lineCount * 8) - 1) * static_cast<std::size_t>(safeScale));
+        return { width, height };
+    }
+
+    void DrawText(
+        honto::Renderer2D& renderer,
+        const std::string& text,
+        const honto::Vec2& position,
+        int glyphScale,
+        honto::Color color,
+        bool useCamera
+    )
+    {
+        float cursorX = position.x;
+        float cursorY = position.y;
+        const float lineAdvance = static_cast<float>(glyphScale * 8);
+        const float columnAdvance = static_cast<float>(glyphScale * 6);
+
+        for (char character : text)
+        {
+            if (character == '\n')
+            {
+                cursorX = position.x;
+                cursorY += lineAdvance;
+                continue;
+            }
+
+            DrawGlyph(renderer, GlyphFor(character), { cursorX, cursorY }, glyphScale, color, useCamera);
+            cursorX += columnAdvance;
+        }
+    }
 }
 
 namespace honto
@@ -492,48 +546,12 @@ namespace honto
     void Label::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
     {
         const int glyphScale = std::max(1, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x)));
-        float cursorX = worldPosition.x;
-        float cursorY = worldPosition.y;
-        const float lineAdvance = static_cast<float>(glyphScale * 8);
-        const float columnAdvance = static_cast<float>(glyphScale * 6);
-
-        for (char character : m_Text)
-        {
-            if (character == '\n')
-            {
-                cursorX = worldPosition.x;
-                cursorY += lineAdvance;
-                continue;
-            }
-
-            DrawGlyph(renderer, GlyphFor(character), { cursorX, cursorY }, glyphScale, m_Color, m_UseCamera);
-            cursorX += columnAdvance;
-        }
+        DrawText(renderer, m_Text, worldPosition, glyphScale, m_Color, m_UseCamera);
     }
 
     void Label::RefreshContentSize()
     {
-        std::size_t maxColumns = 0;
-        std::size_t currentColumns = 0;
-        std::size_t lineCount = 1;
-
-        for (char character : m_Text)
-        {
-            if (character == '\n')
-            {
-                maxColumns = std::max(maxColumns, currentColumns);
-                currentColumns = 0;
-                ++lineCount;
-                continue;
-            }
-
-            ++currentColumns;
-        }
-
-        maxColumns = std::max(maxColumns, currentColumns);
-        const float width = maxColumns == 0 ? 0.0f : static_cast<float>(((maxColumns * 6) - 1) * static_cast<std::size_t>(m_GlyphScale));
-        const float height = lineCount == 0 ? 0.0f : static_cast<float>(((lineCount * 8) - 1) * static_cast<std::size_t>(m_GlyphScale));
-        SetContentSize(width, height);
+        SetContentSize(MeasureTextBounds(m_Text, m_GlyphScale));
     }
 
     bool ProgressBar::Init()
@@ -620,6 +638,150 @@ namespace honto
             m_FillColor,
             m_UseCamera
         );
+    }
+
+    bool Button::Init()
+    {
+        return true;
+    }
+
+    std::shared_ptr<Button> Button::Create(std::string text, float width, float height, bool useCamera)
+    {
+        auto button = std::make_shared<Button>();
+        if (button != nullptr && button->Init())
+        {
+            button->SetContentSize(width, height);
+            button->SetText(std::move(text));
+            button->SetUseCamera(useCamera);
+            return button;
+        }
+
+        return nullptr;
+    }
+
+    void Button::SetText(std::string text)
+    {
+        m_Text = std::move(text);
+    }
+
+    const std::string& Button::GetText() const
+    {
+        return m_Text;
+    }
+
+    void Button::SetGlyphScale(int glyphScale)
+    {
+        m_GlyphScale = std::max(1, glyphScale);
+    }
+
+    int Button::GetGlyphScale() const
+    {
+        return m_GlyphScale;
+    }
+
+    void Button::SetTextColor(Color color)
+    {
+        m_TextColor = color;
+    }
+
+    Color Button::GetTextColor() const
+    {
+        return m_TextColor;
+    }
+
+    void Button::SetNormalColor(Color color)
+    {
+        m_NormalColor = color;
+    }
+
+    Color Button::GetNormalColor() const
+    {
+        return m_NormalColor;
+    }
+
+    void Button::SetHoverColor(Color color)
+    {
+        m_HoverColor = color;
+    }
+
+    Color Button::GetHoverColor() const
+    {
+        return m_HoverColor;
+    }
+
+    void Button::SetPressedColor(Color color)
+    {
+        m_PressedColor = color;
+    }
+
+    Color Button::GetPressedColor() const
+    {
+        return m_PressedColor;
+    }
+
+    void Button::SetBorderColor(Color color)
+    {
+        m_BorderColor = color;
+    }
+
+    Color Button::GetBorderColor() const
+    {
+        return m_BorderColor;
+    }
+
+    void Button::SetHovered(bool hovered)
+    {
+        m_Hovered = hovered;
+    }
+
+    bool Button::IsHovered() const
+    {
+        return m_Hovered;
+    }
+
+    void Button::SetPressed(bool pressed)
+    {
+        m_Pressed = pressed;
+    }
+
+    bool Button::IsPressed() const
+    {
+        return m_Pressed;
+    }
+
+    void Button::SetUseCamera(bool useCamera)
+    {
+        m_UseCamera = useCamera;
+    }
+
+    bool Button::UsesCamera() const
+    {
+        return m_UseCamera;
+    }
+
+    void Button::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
+    {
+        const Vec2 size = GetContentSize() * worldScale;
+        Color background = m_NormalColor;
+        if (m_Pressed)
+        {
+            background = m_PressedColor;
+        }
+        else if (m_Hovered)
+        {
+            background = m_HoverColor;
+        }
+
+        renderer.DrawFilledRect(worldPosition, size, background, m_UseCamera);
+        renderer.DrawRectOutline(worldPosition, size, m_BorderColor, std::max(1, static_cast<int>(std::round(worldScale.x))), m_UseCamera);
+
+        const int glyphScale = std::max(1, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x)));
+        const Vec2 textSize = MeasureTextBounds(m_Text, glyphScale);
+        const Vec2 textPosition {
+            worldPosition.x + std::max(0.0f, (size.x - textSize.x) * 0.5f),
+            worldPosition.y + std::max(0.0f, (size.y - textSize.y) * 0.5f)
+        };
+        DrawText(renderer, m_Text, textPosition, glyphScale, m_TextColor, m_UseCamera);
     }
 
     void CodeScene::OnCreate()

@@ -131,6 +131,60 @@ namespace honto
         }
     }
 
+    bool Window::GetMouseRenderPosition(int sourceWidth, int sourceHeight, Vec2& outPosition) const
+    {
+        outPosition = {};
+
+        if (m_Handle == nullptr || sourceWidth <= 0 || sourceHeight <= 0)
+        {
+            return false;
+        }
+
+        POINT mousePoint {};
+        if (!GetCursorPos(&mousePoint))
+        {
+            return false;
+        }
+
+        if (!ScreenToClient(m_Handle, &mousePoint))
+        {
+            return false;
+        }
+
+        RECT clientRect {};
+        GetClientRect(m_Handle, &clientRect);
+
+        const int clientWidth = clientRect.right - clientRect.left;
+        const int clientHeight = clientRect.bottom - clientRect.top;
+        if (clientWidth <= 0 || clientHeight <= 0)
+        {
+            return false;
+        }
+
+        const float scaleX = static_cast<float>(clientWidth) / static_cast<float>(sourceWidth);
+        const float scaleY = static_cast<float>(clientHeight) / static_cast<float>(sourceHeight);
+        const float scale = std::max(0.0f, std::min(scaleX, scaleY));
+        if (scale <= 0.0f)
+        {
+            return false;
+        }
+
+        const int destinationWidth = std::max(1, static_cast<int>(sourceWidth * scale));
+        const int destinationHeight = std::max(1, static_cast<int>(sourceHeight * scale));
+        const int offsetX = (clientWidth - destinationWidth) / 2;
+        const int offsetY = (clientHeight - destinationHeight) / 2;
+
+        const bool inside =
+            mousePoint.x >= offsetX &&
+            mousePoint.y >= offsetY &&
+            mousePoint.x < offsetX + destinationWidth &&
+            mousePoint.y < offsetY + destinationHeight;
+
+        outPosition.x = static_cast<float>(mousePoint.x - offsetX) / scale;
+        outPosition.y = static_cast<float>(mousePoint.y - offsetY) / scale;
+        return inside;
+    }
+
     LRESULT CALLBACK Window::WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         Window* window = reinterpret_cast<Window*>(GetWindowLongPtrA(hwnd, GWLP_USERDATA));

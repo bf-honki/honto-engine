@@ -10,6 +10,8 @@
 
 #include <Windows.h>
 
+#include "Math.h"
+
 #include <cstdint>
 #include <string>
 
@@ -28,6 +30,7 @@ namespace honto
         static void PumpMessages();
         void Present(const std::uint32_t* pixels, int sourceWidth, int sourceHeight);
         void SetTitle(const std::string& title);
+        bool GetMouseRenderPosition(int sourceWidth, int sourceHeight, Vec2& outPosition) const;
 
         bool IsOpen() const
         {

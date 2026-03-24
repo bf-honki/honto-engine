@@ -200,6 +200,48 @@ namespace honto
         bool m_UseCamera = false;
     };
 
+    class Button : public Node
+    {
+    public:
+        bool Init() override;
+        static std::shared_ptr<Button> Create(std::string text, float width, float height, bool useCamera = false);
+
+        void SetText(std::string text);
+        const std::string& GetText() const;
+        void SetGlyphScale(int glyphScale);
+        int GetGlyphScale() const;
+        void SetTextColor(Color color);
+        Color GetTextColor() const;
+        void SetNormalColor(Color color);
+        Color GetNormalColor() const;
+        void SetHoverColor(Color color);
+        Color GetHoverColor() const;
+        void SetPressedColor(Color color);
+        Color GetPressedColor() const;
+        void SetBorderColor(Color color);
+        Color GetBorderColor() const;
+        void SetHovered(bool hovered);
+        bool IsHovered() const;
+        void SetPressed(bool pressed);
+        bool IsPressed() const;
+        void SetUseCamera(bool useCamera);
+        bool UsesCamera() const;
+
+        void Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale) override;
+
+    private:
+        std::string m_Text;
+        int m_GlyphScale = 1;
+        Color m_TextColor { 255, 255, 255, 255 };
+        Color m_NormalColor { 44, 62, 96, 255 };
+        Color m_HoverColor { 68, 94, 144, 255 };
+        Color m_PressedColor { 92, 128, 188, 255 };
+        Color m_BorderColor { 236, 245, 255, 255 };
+        bool m_Hovered = false;
+        bool m_Pressed = false;
+        bool m_UseCamera = false;
+    };
+
     class CodeScene : public Scene, public Node
     {
     public:

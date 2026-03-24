@@ -9,9 +9,10 @@
 - 중력, 점프, 트윈 애니메이션, 스프라이트시트 애니메이션, 화면 전환, 멀티 윈도우
 - BMP/PNG 텍스처 로딩, 체커 텍스처 생성, 프레임 시트 생성
 - 타일맵 렌더링과 맵 충돌
-- 텍스트 라벨과 진행 바 UI
-- 레벨 파일 저장/불러오기
-- WAV 재생, 시스템 사운드 alias 재생, 간단 톤 재생
+- 텍스트 라벨, 진행 바, 버튼 UI
+- 마우스 좌표와 클릭 입력
+- 레벨 파일 저장/불러오기, JSON 저장/불러오기, Tiled 스타일 JSON 로딩
+- WAV 재생, 시스템 사운드 alias 재생, 간단 톤 재생, 오디오 버스 믹서
 - 카메라 따라가기
 - 2D 맵을 이용한 둠 스타일 2.5D 레이캐스트 화면
 
@@ -138,7 +139,29 @@ auto hp = stage.hontoBar(
 ).hontoAt(8.0f, 32.0f);
 ```
 
-### 8. 레벨 파일
+버튼은 이렇게 바로 만들 수 있습니다.
+
+```cpp
+auto saveButton = stage.hontoButton("save", "SAVE JSON", 92.0f, 16.0f)
+    .hontoAt(12.0f, 92.0f);
+
+stage.hontoWhenClicked(saveButton, []()
+{
+    honto::hontoPrint("clicked");
+});
+```
+
+마우스 좌표도 바로 읽을 수 있습니다.
+
+```cpp
+auto mouse = stage.hontoMousePosition();
+if (stage.hontoHasMouse())
+{
+    honto::hontoPrint(std::to_string(static_cast<int>(mouse.x)));
+}
+```
+
+### 8. 레벨 파일과 JSON
 
 ```cpp
 auto level = honto::hontoLoadLevel("sandbox/levels/platform.honto");
@@ -151,16 +174,35 @@ if (spawn != nullptr)
 }
 
 honto::hontoSaveLevel("sandbox/levels/platform_exported.honto", level);
+honto::hontoSaveLevel("sandbox/levels/platform_exported.json", level);
 ```
 
-레벨 파일은 `sandbox/levels/platform.honto`처럼 텍스트 기반으로 저장됩니다.
+레벨 로더는 아래 형식을 자동으로 인식합니다.
 
-### 9. 오디오
+- `sandbox/levels/platform.honto` 같은 HonTo 텍스트 포맷
+- `sandbox/levels/platform.json` 같은 HonTo JSON 포맷
+- `sandbox/levels/platform_tiled.json` 같은 Tiled 스타일 JSON 포맷
+
+Tiled 스타일 JSON은 현재 `tilelayer`와 `objectgroup` 중심의 실전형 일부 지원입니다.
+
+### 9. 오디오와 믹서
 
 ```cpp
 stage.hontoPlayTone(740, 70);
 stage.hontoPlaySound("assets/jump.wav");
 honto::hontoPlayAlias("SystemAsterisk");
+stage.hontoPlayMusic("sandbox/assets/honto_theme.wav");
+stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+stage.hontoSetMasterVolume(0.85f);
+stage.hontoSetBusVolume("music", 0.72f);
+```
+
+버스별 현재 볼륨도 읽을 수 있습니다.
+
+```cpp
+float master = stage.hontoMasterVolume();
+float music = stage.hontoBusVolume("music");
+float effect = stage.hontoBusVolume("effect");
 ```
 
 ### 10. 화면 전환
@@ -222,9 +264,9 @@ raycast.hontoMap({
 - `engine/include/honto/Texture.h`
   - BMP/PNG 텍스처, 체커 텍스처, 프레임 시트
 - `engine/include/honto/Audio.h`
-  - WAV, alias, tone 재생
+  - WAV, alias, tone 재생과 오디오 버스 믹서
 - `engine/include/honto/Level.h`
-  - 레벨 저장/불러오기 포맷
+  - `.honto`, JSON, Tiled 스타일 JSON 레벨 로더
 - `engine/include/honto/Raycast.h`
   - 둠 스타일 2.5D 뷰
 - `engine/src/Renderer2D.cpp`
@@ -257,7 +299,14 @@ raycast.hontoMap({
 
 - `Label`은 5x7 비트맵 글꼴 기반 텍스트를 그립니다.
 - `ProgressBar`는 HUD용 진행 바를 그립니다.
-- 둘 다 카메라 영향을 받을지 여부를 선택할 수 있습니다.
+- `Button`은 호버, 눌림, 가운데 정렬 텍스트를 가진 클릭 가능한 UI 노드입니다.
+- 셋 다 카메라 영향을 받을지 여부를 선택할 수 있습니다.
+
+### Input
+
+- 키보드는 기존처럼 `hontoPressed`, `hontoPressing`으로 읽을 수 있습니다.
+- 마우스는 현재 활성 윈도우의 렌더 좌표 기준으로 변환되어 들어옵니다.
+- 멀티 윈도우 상황에서도 각 창이 자기 렌더 해상도 기준으로 마우스를 받습니다.
 
 ### Level
 

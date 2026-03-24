@@ -38,6 +38,8 @@ namespace honto
     public:
         static bool Save(const std::string& path, const LevelDocument& level);
         static bool Load(const std::string& path, LevelDocument& level);
+        static bool SaveJson(const std::string& path, const LevelDocument& level);
+        static bool LoadJson(const std::string& path, LevelDocument& level);
     };
 
     const LevelEntity* FindLevelEntity(const LevelDocument& level, const std::string& name);

@@ -27,6 +27,7 @@ namespace HonTo
     using Vec2 = honto::Vec2;
     using Color = honto::Color;
     using Key = honto::KeyCode;
+    using Mouse = honto::MouseButton;
     using Level = honto::LevelDocument;
     using LevelEntity = honto::LevelEntity;
     using Texture = honto::Texture;
@@ -213,9 +214,49 @@ namespace HonTo
         return honto::Audio::PlayAlias(alias, loop);
     }
 
+    inline bool PlayOnBus(const std::string& bus, const std::string& path, bool loop = false)
+    {
+        return honto::Audio::PlayOnBus(bus, path, loop);
+    }
+
+    inline bool PlayMusic(const std::string& path, bool loop = true)
+    {
+        return honto::Audio::PlayMusic(path, loop);
+    }
+
+    inline bool PlayEffect(const std::string& path)
+    {
+        return honto::Audio::PlayEffect(path);
+    }
+
     inline void StopAudio()
     {
         honto::Audio::Stop();
+    }
+
+    inline void StopAudioBus(const std::string& bus)
+    {
+        honto::Audio::StopBus(bus);
+    }
+
+    inline void SetMasterVolume(float volume)
+    {
+        honto::Audio::SetMasterVolume(volume);
+    }
+
+    inline float MasterVolume()
+    {
+        return honto::Audio::GetMasterVolume();
+    }
+
+    inline void SetBusVolume(const std::string& bus, float volume)
+    {
+        honto::Audio::SetBusVolume(bus, volume);
+    }
+
+    inline float BusVolume(const std::string& bus)
+    {
+        return honto::Audio::GetBusVolume(bus);
     }
 
     inline void PlayTone(int frequency, int durationMs)
@@ -586,6 +627,26 @@ namespace HonTo
         return honto::Input::IsKeyPressed(key);
     }
 
+    inline Vec2 MousePosition()
+    {
+        return honto::Input::MousePosition();
+    }
+
+    inline bool HasMouse()
+    {
+        return honto::Input::HasMouse();
+    }
+
+    inline bool MouseDown(Mouse button)
+    {
+        return honto::Input::IsMouseDown(button);
+    }
+
+    inline bool MousePressed(Mouse button)
+    {
+        return honto::Input::IsMousePressed(button);
+    }
+
     class Scene : public honto::CodeScene
     {
     public:
@@ -802,6 +863,11 @@ namespace HonTo
                 return bar->GetFillColor();
             }
 
+            if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                return button->GetNormalColor();
+            }
+
             return RGBA(255, 255, 255);
         }
 
@@ -947,6 +1013,10 @@ namespace HonTo
             {
                 bar->SetFillColor(color);
             }
+            else if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetNormalColor(color);
+            }
 
             return *this;
         }
@@ -1012,6 +1082,10 @@ namespace HonTo
             {
                 label->SetText(text);
             }
+            else if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetText(text);
+            }
 
             return *this;
         }
@@ -1021,6 +1095,10 @@ namespace HonTo
             if (const auto label = std::dynamic_pointer_cast<honto::Label>(Node()))
             {
                 label->SetGlyphScale(glyphScale);
+            }
+            else if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetGlyphScale(glyphScale);
             }
 
             return *this;
@@ -1035,6 +1113,10 @@ namespace HonTo
             else if (const auto bar = std::dynamic_pointer_cast<honto::ProgressBar>(Node()))
             {
                 bar->SetUseCamera(useCamera);
+            }
+            else if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetUseCamera(useCamera);
             }
 
             return *this;
@@ -1057,6 +1139,40 @@ namespace HonTo
                 bar->SetFillColor(fill);
                 bar->SetBackgroundColor(background);
                 bar->SetBorderColor(border);
+            }
+
+            return *this;
+        }
+
+        const Actor& ButtonColors(Color normal, Color hover, Color pressed, Color border) const
+        {
+            if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetNormalColor(normal);
+                button->SetHoverColor(hover);
+                button->SetPressedColor(pressed);
+                button->SetBorderColor(border);
+            }
+
+            return *this;
+        }
+
+        const Actor& ButtonTextColor(Color color) const
+        {
+            if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetTextColor(color);
+            }
+
+            return *this;
+        }
+
+        const Actor& ButtonState(bool hovered, bool pressed) const
+        {
+            if (const auto button = std::dynamic_pointer_cast<honto::Button>(Node()))
+            {
+                button->SetHovered(hovered);
+                button->SetPressed(pressed);
             }
 
             return *this;
@@ -1276,6 +1392,21 @@ namespace HonTo
                    myPosition.y + mySize.y > otherPosition.y;
         }
 
+        bool ContainsPoint(const Vec2& point) const
+        {
+            if (!(*this))
+            {
+                return false;
+            }
+
+            const Vec2 min = Position();
+            const Vec2 max = min + (Size() * ScaleValue());
+            return point.x >= min.x &&
+                   point.x <= max.x &&
+                   point.y >= min.y &&
+                   point.y <= max.y;
+        }
+
         bool TouchingMap(const TileMapActor& map) const;
 
         const Actor& CollideWithMap(const TileMapActor& map) const;
@@ -1388,6 +1519,21 @@ namespace HonTo
             return BarColors(fill, background, border);
         }
 
+        const Actor& hontoButtonColors(Color normal, Color hover, Color pressed, Color border) const
+        {
+            return ButtonColors(normal, hover, pressed, border);
+        }
+
+        const Actor& hontoButtonTextColor(Color color) const
+        {
+            return ButtonTextColor(color);
+        }
+
+        const Actor& hontoButtonState(bool hovered, bool pressed) const
+        {
+            return ButtonState(hovered, pressed);
+        }
+
         const Actor& hontoUseTextureRegion(int x, int y, int width, int height) const
         {
             return UseTextureRegion(x, y, width, height);
@@ -1471,6 +1617,11 @@ namespace HonTo
         bool hontoTouching(const Actor& other) const
         {
             return Touching(other);
+        }
+
+        bool hontoContainsPoint(const Vec2& point) const
+        {
+            return ContainsPoint(point);
         }
 
         bool hontoTouchingMap(const TileMapActor& map) const
@@ -2562,6 +2713,46 @@ namespace HonTo
             return m_State->gravity;
         }
 
+        Vec2 MousePosition() const
+        {
+            return HonTo::MousePosition();
+        }
+
+        bool HasMouse() const
+        {
+            return HonTo::HasMouse();
+        }
+
+        bool MouseDown(Mouse button) const
+        {
+            return HonTo::MouseDown(button);
+        }
+
+        bool MousePressed(Mouse button) const
+        {
+            return HonTo::MousePressed(button);
+        }
+
+        Vec2 hontoMousePosition() const
+        {
+            return MousePosition();
+        }
+
+        bool hontoHasMouse() const
+        {
+            return HasMouse();
+        }
+
+        bool hontoMouseDown(Mouse button) const
+        {
+            return MouseDown(button);
+        }
+
+        bool hontoMousePressed(Mouse button) const
+        {
+            return MousePressed(button);
+        }
+
         Actor Background(Color color)
         {
             return Fill(VisibleSize(), color);
@@ -2800,6 +2991,59 @@ namespace HonTo
             return Bar(name, width, height, value, fill, background, border, useCamera);
         }
 
+        Actor Button(
+            const std::string& name,
+            const std::string& text,
+            float width,
+            float height,
+            Color normal = RGBA(44, 62, 96),
+            Color hover = RGBA(68, 94, 144),
+            Color pressed = RGBA(92, 128, 188),
+            Color border = RGBA(236, 245, 255),
+            Color textColor = RGBA(255, 255, 255),
+            int glyphScale = 1,
+            bool useCamera = false
+        )
+        {
+            auto actor = CreateActor(name, honto::Button::Create(text, width, height, useCamera));
+            actor
+                .Size(width, height)
+                .TextValue(text)
+                .TextScale(glyphScale)
+                .ButtonColors(normal, hover, pressed, border)
+                .ButtonTextColor(textColor)
+                .UseCamera(useCamera)
+                .ButtonState(false, false);
+
+            EveryFrame(
+                [actor](float)
+                {
+                    const bool hovered = HonTo::HasMouse() && actor.ContainsPoint(HonTo::MousePosition());
+                    const bool pressedNow = hovered && HonTo::MouseDown(Mouse::Left);
+                    actor.ButtonState(hovered, pressedNow);
+                }
+            );
+
+            return actor;
+        }
+
+        Actor hontoButton(
+            const std::string& name,
+            const std::string& text,
+            float width,
+            float height,
+            Color normal = RGBA(44, 62, 96),
+            Color hover = RGBA(68, 94, 144),
+            Color pressed = RGBA(92, 128, 188),
+            Color border = RGBA(236, 245, 255),
+            Color textColor = RGBA(255, 255, 255),
+            int glyphScale = 1,
+            bool useCamera = false
+        )
+        {
+            return Button(name, text, width, height, normal, hover, pressed, border, textColor, glyphScale, useCamera);
+        }
+
         RaycastActor Raycast(const std::string& name, float width, float height)
         {
             auto view = std::make_shared<honto::RaycastView>();
@@ -2848,9 +3092,49 @@ namespace HonTo
             return HonTo::PlayAlias(alias, loop);
         }
 
+        bool PlayOnBus(const std::string& bus, const std::string& path, bool loop = false) const
+        {
+            return HonTo::PlayOnBus(bus, path, loop);
+        }
+
+        bool PlayMusic(const std::string& path, bool loop = true) const
+        {
+            return HonTo::PlayMusic(path, loop);
+        }
+
+        bool PlayEffect(const std::string& path) const
+        {
+            return HonTo::PlayEffect(path);
+        }
+
         void StopAudio() const
         {
             HonTo::StopAudio();
+        }
+
+        void StopAudioBus(const std::string& bus) const
+        {
+            HonTo::StopAudioBus(bus);
+        }
+
+        void SetMasterVolume(float volume) const
+        {
+            HonTo::SetMasterVolume(volume);
+        }
+
+        float MasterVolume() const
+        {
+            return HonTo::MasterVolume();
+        }
+
+        void SetBusVolume(const std::string& bus, float volume) const
+        {
+            HonTo::SetBusVolume(bus, volume);
+        }
+
+        float BusVolume(const std::string& bus) const
+        {
+            return HonTo::BusVolume(bus);
         }
 
         void PlayTone(int frequency, int durationMs) const
@@ -2868,9 +3152,49 @@ namespace HonTo
             return PlayAlias(alias, loop);
         }
 
+        bool hontoPlayOnBus(const std::string& bus, const std::string& path, bool loop = false) const
+        {
+            return PlayOnBus(bus, path, loop);
+        }
+
+        bool hontoPlayMusic(const std::string& path, bool loop = true) const
+        {
+            return PlayMusic(path, loop);
+        }
+
+        bool hontoPlayEffect(const std::string& path) const
+        {
+            return PlayEffect(path);
+        }
+
         void hontoStopAudio() const
         {
             StopAudio();
+        }
+
+        void hontoStopAudioBus(const std::string& bus) const
+        {
+            StopAudioBus(bus);
+        }
+
+        void hontoSetMasterVolume(float volume) const
+        {
+            SetMasterVolume(volume);
+        }
+
+        float hontoMasterVolume() const
+        {
+            return MasterVolume();
+        }
+
+        void hontoSetBusVolume(const std::string& bus, float volume) const
+        {
+            SetBusVolume(bus, volume);
+        }
+
+        float hontoBusVolume(const std::string& bus) const
+        {
+            return BusVolume(bus);
         }
 
         void hontoPlayTone(int frequency, int durationMs) const
@@ -2914,6 +3238,29 @@ namespace HonTo
         void hontoWhenPressed(Key key, std::function<void()> fn)
         {
             WhenPressed(key, std::move(fn));
+        }
+
+        void WhenClicked(const Actor& actor, std::function<void()> fn, Mouse button = Mouse::Left)
+        {
+            EveryFrame(
+                [actor, button, fn = std::move(fn)](float)
+                {
+                    if (fn == nullptr || !HonTo::HasMouse())
+                    {
+                        return;
+                    }
+
+                    if (actor.ContainsPoint(HonTo::MousePosition()) && HonTo::MousePressed(button))
+                    {
+                        fn();
+                    }
+                }
+            );
+        }
+
+        void hontoWhenClicked(const Actor& actor, std::function<void()> fn, Mouse button = Mouse::Left)
+        {
+            WhenClicked(actor, std::move(fn), button);
         }
 
         void WhilePressing(Key key, std::function<void(float)> fn)
@@ -3288,6 +3635,7 @@ namespace honto
     using hontoVec2 = Vec2;
     using hontoColor = Color;
     using hontoKey = KeyCode;
+    using hontoMouse = MouseButton;
     using hontoTransition = HonTo::Transition;
     using hontoScene = HonTo::Scene;
     using hontoActor = HonTo::Actor;
@@ -3376,9 +3724,49 @@ namespace honto
         return HonTo::PlayAlias(alias, loop);
     }
 
+    inline bool hontoPlayOnBus(const std::string& bus, const std::string& path, bool loop = false)
+    {
+        return HonTo::PlayOnBus(bus, path, loop);
+    }
+
+    inline bool hontoPlayMusic(const std::string& path, bool loop = true)
+    {
+        return HonTo::PlayMusic(path, loop);
+    }
+
+    inline bool hontoPlayEffect(const std::string& path)
+    {
+        return HonTo::PlayEffect(path);
+    }
+
     inline void hontoStopAudio()
     {
         HonTo::StopAudio();
+    }
+
+    inline void hontoStopAudioBus(const std::string& bus)
+    {
+        HonTo::StopAudioBus(bus);
+    }
+
+    inline void hontoSetMasterVolume(float volume)
+    {
+        HonTo::SetMasterVolume(volume);
+    }
+
+    inline float hontoMasterVolume()
+    {
+        return HonTo::MasterVolume();
+    }
+
+    inline void hontoSetBusVolume(const std::string& bus, float volume)
+    {
+        HonTo::SetBusVolume(bus, volume);
+    }
+
+    inline float hontoBusVolume(const std::string& bus)
+    {
+        return HonTo::BusVolume(bus);
     }
 
     inline void hontoPlayTone(int frequency, int durationMs)
@@ -3414,6 +3802,26 @@ namespace honto
     inline bool hontoPressed(KeyCode key)
     {
         return HonTo::Pressed(key);
+    }
+
+    inline Vec2 hontoMousePosition()
+    {
+        return HonTo::MousePosition();
+    }
+
+    inline bool hontoHasMouse()
+    {
+        return HonTo::HasMouse();
+    }
+
+    inline bool hontoMouseDown(MouseButton button)
+    {
+        return HonTo::MouseDown(button);
+    }
+
+    inline bool hontoMousePressed(MouseButton button)
+    {
+        return HonTo::MousePressed(button);
     }
 
     inline HonTo::GameBuilder hontoGame(const std::string& title = "honto Game")

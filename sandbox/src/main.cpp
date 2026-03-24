@@ -8,6 +8,22 @@
 
 namespace
 {
+    float Clamp01(float value)
+    {
+        return std::clamp(value, 0.0f, 1.0f);
+    }
+
+    std::string MakeMouseText(const honto::hontoStage& stage)
+    {
+        if (!stage.hontoHasMouse())
+        {
+            return "MOUSE: --, --";
+        }
+
+        const honto::hontoVec2 mouse = stage.hontoMousePosition();
+        return "MOUSE: " + std::to_string(static_cast<int>(mouse.x)) + ", " + std::to_string(static_cast<int>(mouse.y));
+    }
+
     const std::vector<std::string> kFallbackPlatformMap {
         "........................................",
         "........................................",
@@ -37,7 +53,11 @@ namespace
 
     honto::hontoLevel LoadPlatformLevel()
     {
-        honto::hontoLevel level = honto::hontoLoadLevel("sandbox/levels/platform.honto");
+        honto::hontoLevel level = honto::hontoLoadLevel("sandbox/levels/platform.json");
+        if (!level.IsValid())
+        {
+            level = honto::hontoLoadLevel("sandbox/levels/platform.honto");
+        }
         if (level.IsValid())
         {
             return level;
@@ -334,7 +354,7 @@ namespace
 
     void BuildToolsWindow(honto::hontoStage& stage)
     {
-        auto level = LoadPlatformLevel();
+        auto level = std::make_shared<honto::hontoLevel>(LoadPlatformLevel());
         auto previewSheet = honto::hontoFrameSheetTexture(
             16,
             16,
@@ -347,33 +367,103 @@ namespace
             4
         );
 
+        stage.hontoSetMasterVolume(0.85f);
+        stage.hontoSetBusVolume("music", 0.72f);
+        stage.hontoSetBusVolume("effect", 0.94f);
+
         stage.hontoBackground(20, 22, 30);
-        stage.hontoOutline(228.0f, 122.0f, honto::hontoRGBA(74, 90, 114), 1).hontoAt(6.0f, 6.0f).hontoLayer(1);
-        stage.hontoText("tool_title", "PNG  UI  LEVEL", honto::hontoRGBA(236, 245, 255), 2)
+        stage.hontoOutline(308.0f, 168.0f, honto::hontoRGBA(74, 90, 114), 1).hontoAt(6.0f, 6.0f).hontoLayer(1);
+        stage.hontoText("tool_title", "MOUSE  JSON  MIXER", honto::hontoRGBA(236, 245, 255), 2)
             .hontoAt(12.0f, 10.0f)
             .hontoLayer(3);
-        stage.hontoText("tool_level", level.title, honto::hontoRGBA(166, 188, 216), 1)
+        auto levelLabel = stage.hontoText("tool_level", level->title, honto::hontoRGBA(166, 188, 216), 1)
             .hontoAt(12.0f, 30.0f)
+            .hontoLayer(3);
+        auto mouseLabel = stage.hontoText("tool_mouse", MakeMouseText(stage), honto::hontoRGBA(196, 210, 230), 1)
+            .hontoAt(12.0f, 42.0f)
+            .hontoLayer(3);
+        auto statusLabel = stage.hontoText("tool_status", "READY", honto::hontoRGBA(255, 236, 162), 1)
+            .hontoAt(12.0f, 54.0f)
             .hontoLayer(3);
 
         stage.hontoImage("tool_badge", "sandbox/assets/honto_badge.png", 24.0f, 24.0f)
-            .hontoAt(196.0f, 12.0f)
+            .hontoAt(280.0f, 12.0f)
             .hontoLayer(3);
 
-        auto bar = stage.hontoBar(
-            "tool_bar",
-            88.0f,
-            10.0f,
-            0.45f,
+        auto playMusicButton = stage.hontoButton("music_play", "PLAY MUSIC", 92.0f, 16.0f)
+            .hontoAt(12.0f, 70.0f)
+            .hontoLayer(3);
+        auto stopMusicButton = stage.hontoButton("music_stop", "STOP MUSIC", 92.0f, 16.0f)
+            .hontoAt(112.0f, 70.0f)
+            .hontoLayer(3);
+        auto fxButton = stage.hontoButton("effect_test", "FX TEST", 92.0f, 16.0f)
+            .hontoAt(212.0f, 70.0f)
+            .hontoLayer(3);
+        auto masterDownButton = stage.hontoButton("master_down", "MASTER -", 92.0f, 16.0f)
+            .hontoAt(12.0f, 92.0f)
+            .hontoLayer(3);
+        auto masterUpButton = stage.hontoButton("master_up", "MASTER +", 92.0f, 16.0f)
+            .hontoAt(112.0f, 92.0f)
+            .hontoLayer(3);
+        auto saveJsonButton = stage.hontoButton("save_json", "SAVE JSON", 92.0f, 16.0f)
+            .hontoAt(212.0f, 92.0f)
+            .hontoLayer(3);
+        auto loadJsonButton = stage.hontoButton("load_json", "LOAD JSON", 92.0f, 16.0f)
+            .hontoAt(12.0f, 114.0f)
+            .hontoLayer(3);
+        auto loadTiledButton = stage.hontoButton("load_tiled", "LOAD TILED", 92.0f, 16.0f)
+            .hontoAt(112.0f, 114.0f)
+            .hontoLayer(3);
+        auto saveTextButton = stage.hontoButton("save_text", "SAVE HONTO", 92.0f, 16.0f)
+            .hontoAt(212.0f, 114.0f)
+            .hontoLayer(3);
+
+        stage.hontoText("master_label", "MASTER", honto::hontoRGBA(236, 245, 255), 1)
+            .hontoAt(12.0f, 140.0f)
+            .hontoLayer(3);
+        stage.hontoText("music_label", "MUSIC", honto::hontoRGBA(236, 245, 255), 1)
+            .hontoAt(12.0f, 152.0f)
+            .hontoLayer(3);
+        stage.hontoText("effect_label", "EFFECT", honto::hontoRGBA(236, 245, 255), 1)
+            .hontoAt(12.0f, 164.0f)
+            .hontoLayer(3);
+
+        auto masterBar = stage.hontoBar(
+            "master_bar",
+            118.0f,
+            8.0f,
+            stage.hontoMasterVolume(),
             honto::hontoRGBA(110, 236, 158),
             honto::hontoRGBA(10, 14, 22, 220),
             honto::hontoRGBA(236, 245, 255)
         )
-            .hontoAt(12.0f, 46.0f)
+            .hontoAt(66.0f, 140.0f)
+            .hontoLayer(3);
+        auto musicBar = stage.hontoBar(
+            "music_bar",
+            118.0f,
+            8.0f,
+            stage.hontoBusVolume("music"),
+            honto::hontoRGBA(96, 208, 255),
+            honto::hontoRGBA(10, 14, 22, 220),
+            honto::hontoRGBA(236, 245, 255)
+        )
+            .hontoAt(66.0f, 152.0f)
+            .hontoLayer(3);
+        auto effectBar = stage.hontoBar(
+            "effect_bar",
+            118.0f,
+            8.0f,
+            stage.hontoBusVolume("effect"),
+            honto::hontoRGBA(255, 184, 96),
+            honto::hontoRGBA(10, 14, 22, 220),
+            honto::hontoRGBA(236, 245, 255)
+        )
+            .hontoAt(66.0f, 164.0f)
             .hontoLayer(3);
 
         auto scout = stage.hontoImage("scout", previewSheet, 26.0f, 26.0f)
-            .hontoAt(30.0f, 82.0f)
+            .hontoAt(216.0f, 144.0f)
             .hontoLayer(3);
         scout.hontoAnimateFrames()
             .hontoTexture(previewSheet)
@@ -383,18 +473,152 @@ namespace
             .hontoLoop()
             .hontoPlay();
         scout.hontoAnimate()
-            .hontoMoveTo(188.0f, 82.0f)
+            .hontoMoveTo(278.0f, 144.0f)
             .hontoIn(1.2f)
             .hontoPingPong()
             .hontoLoop()
             .hontoPlay();
 
+        stage.hontoWhenClicked(
+            playMusicButton,
+            [stage, statusLabel]()
+            {
+                if (stage.hontoPlayMusic("sandbox/assets/honto_theme.wav"))
+                {
+                    stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                    statusLabel.hontoTextValue("STATUS: MUSIC PLAYING");
+                }
+                else
+                {
+                    statusLabel.hontoTextValue("STATUS: MUSIC FAILED");
+                }
+            }
+        );
+
+        stage.hontoWhenClicked(
+            stopMusicButton,
+            [stage, statusLabel]()
+            {
+                stage.hontoStopAudioBus("music");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                statusLabel.hontoTextValue("STATUS: MUSIC STOPPED");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            fxButton,
+            [stage, statusLabel]()
+            {
+                if (stage.hontoPlayEffect("sandbox/assets/honto_click.wav"))
+                {
+                    statusLabel.hontoTextValue("STATUS: EFFECT BUS TEST");
+                }
+                else
+                {
+                    statusLabel.hontoTextValue("STATUS: EFFECT FAILED");
+                }
+            }
+        );
+
+        stage.hontoWhenClicked(
+            masterDownButton,
+            [stage, statusLabel]()
+            {
+                const float nextVolume = Clamp01(stage.hontoMasterVolume() - 0.1f);
+                stage.hontoSetMasterVolume(nextVolume);
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                statusLabel.hontoTextValue("STATUS: MASTER " + std::to_string(static_cast<int>(nextVolume * 100.0f)) + "%");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            masterUpButton,
+            [stage, statusLabel]()
+            {
+                const float nextVolume = Clamp01(stage.hontoMasterVolume() + 0.1f);
+                stage.hontoSetMasterVolume(nextVolume);
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                statusLabel.hontoTextValue("STATUS: MASTER " + std::to_string(static_cast<int>(nextVolume * 100.0f)) + "%");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            saveJsonButton,
+            [stage, level, statusLabel]()
+            {
+                if (honto::hontoSaveLevel("sandbox/levels/platform_exported.json", *level))
+                {
+                    stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                    statusLabel.hontoTextValue("STATUS: JSON SAVED");
+                }
+                else
+                {
+                    statusLabel.hontoTextValue("STATUS: JSON SAVE FAILED");
+                }
+            }
+        );
+
+        stage.hontoWhenClicked(
+            loadJsonButton,
+            [stage, level, levelLabel, statusLabel]()
+            {
+                honto::hontoLevel loaded = honto::hontoLoadLevel("sandbox/levels/platform.json");
+                if (!loaded.IsValid())
+                {
+                    statusLabel.hontoTextValue("STATUS: JSON LOAD FAILED");
+                    return;
+                }
+
+                *level = loaded;
+                levelLabel.hontoTextValue(level->title);
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                statusLabel.hontoTextValue("STATUS: JSON LOADED");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            loadTiledButton,
+            [stage, level, levelLabel, statusLabel]()
+            {
+                honto::hontoLevel loaded = honto::hontoLoadLevel("sandbox/levels/platform_tiled.json");
+                if (!loaded.IsValid())
+                {
+                    statusLabel.hontoTextValue("STATUS: TILED LOAD FAILED");
+                    return;
+                }
+
+                *level = loaded;
+                levelLabel.hontoTextValue(level->title);
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                statusLabel.hontoTextValue("STATUS: TILED LOADED");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            saveTextButton,
+            [stage, level, statusLabel]()
+            {
+                if (honto::hontoSaveLevel("sandbox/levels/platform_exported.honto", *level))
+                {
+                    stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                    statusLabel.hontoTextValue("STATUS: HONTO SAVED");
+                }
+                else
+                {
+                    statusLabel.hontoTextValue("STATUS: HONTO SAVE FAILED");
+                }
+            }
+        );
+
         stage.hontoEveryFrame(
-            [bar, t = 0.0f](float deltaTime) mutable
+            [stage, masterBar, musicBar, effectBar, mouseLabel, t = 0.0f](float deltaTime) mutable
             {
                 t += deltaTime;
                 const float wave = (std::sin(t * 2.4f) * 0.5f) + 0.5f;
-                bar.hontoBarValue(wave);
+                masterBar.hontoBarValue(stage.hontoMasterVolume());
+                musicBar.hontoBarValue(stage.hontoBusVolume("music"));
+                effectBar.hontoBarValue(std::max(stage.hontoBusVolume("effect") * 0.65f, wave * 0.35f));
+                mouseLabel.hontoTextValue(MakeMouseText(stage));
             }
         );
     }
@@ -408,10 +632,10 @@ int main()
         .hontoClear(honto::hontoRGBA(16, 18, 26))
         .hontoOpenWindow(
             "honto Tool Window",
-            720,
-            420,
-            240,
-            135,
+            960,
+            540,
+            320,
+            180,
             BuildToolsWindow,
             honto::hontoRGBA(20, 22, 30)
         )

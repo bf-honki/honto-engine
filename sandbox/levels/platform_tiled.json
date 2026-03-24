@@ -1,0 +1,103 @@
+{
+  "type": "map",
+  "name": "PORTAL PLAINS TILED",
+  "width": 40,
+  "height": 12,
+  "tilewidth": 16,
+  "tileheight": 16,
+  "tileSymbols": [".", "#", "B", "C"],
+  "layers": [
+    {
+      "type": "tilelayer",
+      "name": "world",
+      "width": 40,
+      "height": 12,
+      "rows": [
+        "........................................",
+        "........................................",
+        ".......................C................",
+        "........................................",
+        "......B.....................CCC.........",
+        "............####........................",
+        "....................#####...............",
+        "...####.........................##......",
+        "...............B........................",
+        ".........#####.............####.........",
+        "........................................",
+        "########################################"
+      ]
+    },
+    {
+      "type": "objectgroup",
+      "name": "entities",
+      "objects": [
+        {
+          "name": "player_spawn",
+          "type": "spawn",
+          "x": 36,
+          "y": 40,
+          "width": 16,
+          "height": 16
+        },
+        {
+          "name": "portal_spawn",
+          "type": "portal",
+          "x": 594,
+          "y": 140,
+          "width": 20,
+          "height": 36,
+          "properties": [
+            {
+              "name": "color",
+              "value": [255, 236, 162, 255]
+            }
+          ]
+        },
+        {
+          "name": "hud_title",
+          "type": "label",
+          "x": 8,
+          "y": 8,
+          "width": 0,
+          "height": 0,
+          "properties": [
+            {
+              "name": "text",
+              "value": "PORTAL PLAINS TILED"
+            },
+            {
+              "name": "layer",
+              "value": 11
+            },
+            {
+              "name": "color",
+              "value": [238, 245, 255, 255]
+            }
+          ]
+        },
+        {
+          "name": "hud_hint",
+          "type": "label",
+          "x": 8,
+          "y": 20,
+          "width": 0,
+          "height": 0,
+          "properties": [
+            {
+              "name": "text",
+              "value": "A/D MOVE  SPACE JUMP  ENTER PORTAL"
+            },
+            {
+              "name": "layer",
+              "value": 11
+            },
+            {
+              "name": "color",
+              "value": [194, 208, 228, 255]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

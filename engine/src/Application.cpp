@@ -192,6 +192,7 @@ namespace honto
         }
 
         m_CurrentContext = &context;
+        Input::SetMouseContext(*context.window, context.config.renderWidth, context.config.renderHeight);
         if (context.scene != nullptr)
         {
             context.scene->OnUpdate(deltaTime);
