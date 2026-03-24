@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <EnableHonToSigning>true</EnableHonToSigning>
+
+    <!-- Leave empty to auto-detect the newest signtool.exe from the Windows SDK. -->
+    <HonToSignToolExe></HonToSignToolExe>
+
+    <!-- Choose one of the certificate options below. -->
+
+    <!-- Option 1: sign with a password-protected PFX file -->
+    <HonToSignPfxPath>C:\certs\your-code-signing-cert.pfx</HonToSignPfxPath>
+    <HonToSignPfxPassword></HonToSignPfxPassword>
+
+    <!-- Option 2: sign with a certificate already installed in the Windows certificate store -->
+    <HonToSignCertSha1></HonToSignCertSha1>
+    <HonToSignCertSubject></HonToSignCertSubject>
+    <HonToSignMachineStore>0</HonToSignMachineStore>
+
+    <!-- Optional but recommended for long-lived signatures -->
+    <HonToSignTimestampUrl>http://timestamp.digicert.com</HonToSignTimestampUrl>
+  </PropertyGroup>
+</Project>

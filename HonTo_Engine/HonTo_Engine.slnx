@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="HonTo_Engine/HonTo_Engine.vcxproj" Id="a18a43f1-70f1-402c-8f0c-48bbc2661bb1" />
+</Solution>
