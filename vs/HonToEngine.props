@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="HonTo">
+    <HonToSdkRoot Condition="'$(HonToSdkRoot)'==''">$(HONTO_SDK_ROOT)</HonToSdkRoot>
+    <HonToSignScript>$(HonToSdkRoot)\bin\Sign-Binary.ps1</HonToSignScript>
+    <HonToEnableSigning Condition="'$(HonToEnableSigning)'==''">false</HonToEnableSigning>
+  </PropertyGroup>
+
+  <Target Name="HonToValidateSdk" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(HonToSdkRoot)'==''" Text="HONTO_SDK_ROOT is not set. Install the HonTo SDK or define HonToSdkRoot in the project." />
+    <Error Condition="!Exists('$(HonToSdkRoot)\include\honto\HonTo.h')" Text="HonTo SDK headers were not found in $(HonToSdkRoot)." />
+    <Error Condition="!Exists('$(HonToSdkRoot)\lib\honto_engine.lib')" Text="HonTo SDK library was not found in $(HonToSdkRoot)\lib." />
+  </Target>
+
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(HonToSdkRoot)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>$(HonToSdkRoot)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>honto_engine.lib;user32.lib;gdi32.lib;gdiplus.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <Target Name="HonToSignBinary" AfterTargets="Link" Condition="'$(HonToEnableSigning)'=='true' and Exists('$(HonToSignScript)')">
+    <Exec
+      Command="powershell -ExecutionPolicy Bypass -File &quot;$(HonToSignScript)&quot; -TargetPath &quot;$(TargetPath)&quot; -SignToolPath &quot;$(HONTO_SIGNTOOL_EXE)&quot; -PfxPath &quot;$(HONTO_SIGN_PFX_PATH)&quot; -PfxPassword &quot;$(HONTO_SIGN_PFX_PASSWORD)&quot; -CertSha1 &quot;$(HONTO_SIGN_CERT_SHA1)&quot; -CertSubject &quot;$(HONTO_SIGN_CERT_SUBJECT)&quot; -MachineStore &quot;$(HONTO_SIGN_MACHINE_STORE)&quot; -TimestampUrl &quot;$(HONTO_SIGN_TIMESTAMP_URL)&quot;" />
+  </Target>
+</Project>

@@ -73,6 +73,7 @@ cmake --build build --config Release
 - 예제
 
 설치 프로그램 방식이 필요하면 `docs/HONTO_INSTALLER_GUIDE_KO.md`를 보면 됩니다.
+Visual Studio 라이브러리 프로젝트 방식은 `docs/HONTO_VISUAL_STUDIO_GUIDE_KO.md`를 보면 됩니다.
 
 ## 6. 새 게임 프로젝트 만들기
 

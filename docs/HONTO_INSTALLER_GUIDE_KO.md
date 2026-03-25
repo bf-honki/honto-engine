@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-이 문서는 `honto engine`을 `설치 프로그램`으로 배포하고, 설치한 뒤 `Visual Studio`에서 바로 새 게임 프로젝트를 여는 흐름을 설명합니다.
+이 문서는 `honto engine`을 `설치 프로그램` 또는 `릴리즈 zip`으로 배포하고, 설치한 뒤 `Visual Studio`에서 바로 새 게임 프로젝트를 여는 흐름을 설명합니다.
 
 ## 2. 설치파일 만드는 사람 기준
 
@@ -15,6 +15,20 @@
 기본 출력 파일은 아래입니다.
 
 ```text
+dist\HonToEngine-SDK-Setup.exe
+```
+
+설치형 zip과 portable zip까지 같이 만들고 싶다면 아래 명령을 사용합니다.
+
+```powershell
+.\scripts\Build-HonToReleaseAssets.ps1
+```
+
+그러면 아래 파일들이 생깁니다.
+
+```text
+dist\HonToEngine-SDK-Portable-0.1.0-win64.zip
+dist\HonToEngine-SDK-Setup-0.1.0-win64.zip
 dist\HonToEngine-SDK-Setup.exe
 ```
 
@@ -42,6 +56,14 @@ dist\HonToEngine-SDK-Setup.exe
 
 동시에 사용자 환경 변수 `HONTO_SDK_ROOT`도 설정됩니다.
 
+`HonToEngine-SDK-Setup-0.1.0-win64.zip`로 배포하면 사용자는:
+
+1. zip 다운로드
+2. 압축 해제
+3. 안의 `HonToEngine-SDK-Setup.exe` 실행
+
+순서로 설치하면 됩니다.
+
 ## 4. 설치 후 Visual Studio에서 어떻게 연결되나
 
 새 HonTo 프로젝트의 `CMakeLists.txt`는 `HONTO_SDK_ROOT` 환경 변수를 먼저 확인합니다.
@@ -66,6 +88,12 @@ find_package(HonToEngine CONFIG REQUIRED)
 
 ```text
 C:\Games\MyGame
+```
+
+Visual Studio 라이브러리 프로젝트 형식으로 만들고 싶다면:
+
+```powershell
+& "$env:HONTO_SDK_ROOT\bin\New-HonToVsProject.ps1" -ProjectName MyVsGame -DestinationPath C:\Games
 ```
 
 ## 6. Visual Studio에서 열기

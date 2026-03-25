@@ -7,6 +7,7 @@ Source structure guide: `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
 Sample Code Lab guide: `docs/HONTO_ACADEMY_GUIDE_KO.md`
 Step-by-step SDK quickstart guide: `docs/HONTO_GETTING_STARTED_KO.md`
 Installer workflow guide: `docs/HONTO_INSTALLER_GUIDE_KO.md`
+Visual Studio library workflow guide: `docs/HONTO_VISUAL_STUDIO_GUIDE_KO.md`
 
 This version now covers the core runtime features most people expect when prototyping a 2D engine:
 
@@ -92,6 +93,22 @@ dist\HonToEngine-SDK-Setup.exe
 
 After installing, restart Visual Studio and open a generated HonTo project folder. The starter template now reads `HONTO_SDK_ROOT` automatically, so `find_package(HonToEngine CONFIG REQUIRED)` works without manually typing `CMAKE_PREFIX_PATH`.
 
+If you want both release-style download assets, build them together:
+
+```powershell
+.\scripts\Build-HonToReleaseAssets.ps1
+```
+
+That produces:
+
+```text
+dist\HonToEngine-SDK-Portable-0.1.0-win64.zip
+dist\HonToEngine-SDK-Setup-0.1.0-win64.zip
+dist\HonToEngine-SDK-Setup.exe
+```
+
+The `Portable` zip is the SDK folder itself. The `Setup` zip is the GitHub-release friendly download that contains the installer exe inside.
+
 If the target machine enforces Smart App Control, you can sign generated game executables during the build:
 
 ```powershell
@@ -109,6 +126,14 @@ You can generate a fresh external project from the starter template:
 
 This creates a new buildable game project under `C:\Games\MyGame`.
 
+If you want a pure Visual Studio project that links only against the installed SDK library, use:
+
+```powershell
+.\scripts\New-HonToVsProject.ps1 -ProjectName MyVsGame -DestinationPath C:\Games
+```
+
+That creates a `.sln` and `.vcxproj` project that imports `HonToEngine.props` from the SDK and lets you code gameplay only in `src\main.cpp`.
+
 For a full step-by-step workflow from download to writing `main.cpp`, read:
 
 - `docs/HONTO_GETTING_STARTED_KO.md`
@@ -125,6 +150,8 @@ This repository is configured so Visual Studio shows:
 - engine source files in Solution Explorer
 - `honto_sandbox` as the startup project
 - the workspace root as the debugger working directory
+
+If you prefer the cocos2d-x style "engine is a library, my game is a Visual Studio project" workflow, see `docs/HONTO_VISUAL_STUDIO_GUIDE_KO.md`.
 
 ## Smart App Control
 

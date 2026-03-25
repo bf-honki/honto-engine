@@ -171,20 +171,29 @@ install(FILES
     docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md
     docs/HONTO_GETTING_STARTED_KO.md
     docs/HONTO_INSTALLER_GUIDE_KO.md
+    docs/HONTO_VISUAL_STUDIO_GUIDE_KO.md
     DESTINATION "${CMAKE_INSTALL_DATADIR}/HonToEngine"
 )
 
 install(DIRECTORY templates/ DESTINATION "${CMAKE_INSTALL_DATADIR}/HonToEngine/templates")
-install(DIRECTORY examples/ DESTINATION "${CMAKE_INSTALL_DATADIR}/HonToEngine/examples")
+install(DIRECTORY vs/ DESTINATION "${CMAKE_INSTALL_DATADIR}/HonToEngine/vs")
+install(DIRECTORY examples/ DESTINATION "${CMAKE_INSTALL_DATADIR}/HonToEngine/examples"
+    PATTERN "build" EXCLUDE
+    PATTERN "build_*" EXCLUDE
+    PATTERN "build_verify" EXCLUDE
+    PATTERN ".vs" EXCLUDE
+)
 
 install(PROGRAMS
     scripts/Sign-Binary.ps1
     scripts/Setup-LocalDevSigning.ps1
     scripts/Remove-LocalDevSigning.ps1
     scripts/New-HonToProject.ps1
+    scripts/New-HonToVsProject.ps1
     scripts/Build-HonToSdk.ps1
     scripts/Install-HonToSdk.ps1
     scripts/Build-HonToInstaller.ps1
+    scripts/Build-HonToReleaseAssets.ps1
     DESTINATION "${CMAKE_INSTALL_BINDIR}"
 )
 
