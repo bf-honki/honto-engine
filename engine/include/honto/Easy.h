@@ -174,6 +174,7 @@ namespace HonTo
     class Actor;
     class Animation;
     class FrameAnimation;
+    class ParticleActor;
     class RaycastActor;
     class Stage;
     class TileMapActor;
@@ -1343,6 +1344,71 @@ namespace HonTo
             );
         }
 
+        const Actor& PatrolX(float left, float right, float speed) const
+        {
+            auto direction = std::make_shared<float>(1.0f);
+            return OnUpdate(
+                [left, right, speed, direction](Actor& self, float deltaTime)
+                {
+                    if (self.Position().x <= left)
+                    {
+                        *direction = 1.0f;
+                    }
+                    else if (self.Position().x >= right)
+                    {
+                        *direction = -1.0f;
+                    }
+
+                    self.Move(*direction * speed * deltaTime, 0.0f);
+                }
+            );
+        }
+
+        const Actor& Chase(const Actor& target, float speed, float stopDistance = 0.0f) const
+        {
+            return OnUpdate(
+                [target, speed, stopDistance](Actor& self, float deltaTime)
+                {
+                    if (!target)
+                    {
+                        return;
+                    }
+
+                    Vec2 delta = target.Position() - self.Position();
+                    const float length = std::sqrt((delta.x * delta.x) + (delta.y * delta.y));
+                    if (length <= std::max(0.0f, stopDistance) || length <= 0.001f)
+                    {
+                        return;
+                    }
+
+                    delta = delta / length;
+                    self.Move(delta * (speed * deltaTime));
+                }
+            );
+        }
+
+        const Actor& ChaseX(const Actor& target, float speed, float stopDistance = 0.0f) const
+        {
+            return OnUpdate(
+                [target, speed, stopDistance](Actor& self, float deltaTime)
+                {
+                    if (!target)
+                    {
+                        return;
+                    }
+
+                    const float delta = target.Position().x - self.Position().x;
+                    if (std::abs(delta) <= std::max(0.0f, stopDistance))
+                    {
+                        return;
+                    }
+
+                    const float direction = delta < 0.0f ? -1.0f : 1.0f;
+                    self.Move(direction * speed * deltaTime, 0.0f);
+                }
+            );
+        }
+
         const Actor& OnUpdate(std::function<void(Actor&, float)> fn) const
         {
             if (fn == nullptr)
@@ -1607,6 +1673,21 @@ namespace HonTo
         const Actor& hontoBounceInside(float left, float top, float right, float bottom) const
         {
             return BounceInside(left, top, right, bottom);
+        }
+
+        const Actor& hontoPatrolX(float left, float right, float speed) const
+        {
+            return PatrolX(left, right, speed);
+        }
+
+        const Actor& hontoChase(const Actor& target, float speed, float stopDistance = 0.0f) const
+        {
+            return Chase(target, speed, stopDistance);
+        }
+
+        const Actor& hontoChaseX(const Actor& target, float speed, float stopDistance = 0.0f) const
+        {
+            return ChaseX(target, speed, stopDistance);
         }
 
         const Actor& hontoOnUpdate(std::function<void(Actor&, float)> fn) const
@@ -2258,44 +2339,44 @@ namespace HonTo
         {
         }
 
-        TileMapActor& Map(const std::vector<std::string>& map)
+        TileMapActor& Map(const std::vector<std::string>& map) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetMap(map);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
         }
 
-        TileMapActor& TileSize(float width, float height)
+        TileMapActor& TileSize(float width, float height) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetTileSize(width, height);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
         }
 
-        TileMapActor& Tile(char tile, Color color, bool solid = false, bool visible = true)
+        TileMapActor& Tile(char tile, Color color, bool solid = false, bool visible = true) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetTile(tile, color, solid, visible);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
         }
 
-        TileMapActor& TileTexture(char tile, const std::shared_ptr<Texture>& texture, Color tint = RGBA(255, 255, 255), bool solid = false, bool visible = true)
+        TileMapActor& TileTexture(char tile, const std::shared_ptr<Texture>& texture, Color tint = RGBA(255, 255, 255), bool solid = false, bool visible = true) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetTileTexture(tile, texture, tint, solid, visible);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
         }
 
         TileMapActor& TileTextureRegion(
@@ -2308,34 +2389,66 @@ namespace HonTo
             Color tint = RGBA(255, 255, 255),
             bool solid = false,
             bool visible = true
-        )
+        ) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetTileTextureRegion(tile, texture, { x, y, width, height }, tint, solid, visible);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
         }
 
-        TileMapActor& TileSolid(char tile, bool solid)
+        TileMapActor& TileSolid(char tile, bool solid) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetTileSolid(tile, solid);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
         }
 
-        TileMapActor& TileVisible(char tile, bool visible)
+        TileMapActor& TileVisible(char tile, bool visible) const
         {
             if (const auto tileMap = View())
             {
                 tileMap->SetTileVisible(tile, visible);
             }
 
-            return *this;
+            return const_cast<TileMapActor&>(*this);
+        }
+
+        char Cell(int column, int row) const
+        {
+            if (const auto tileMap = View())
+            {
+                return tileMap->GetCell(column, row);
+            }
+
+            return '\0';
+        }
+
+        TileMapActor& Cell(int column, int row, char tile) const
+        {
+            if (const auto tileMap = View())
+            {
+                tileMap->SetCell(column, row, tile);
+            }
+
+            return const_cast<TileMapActor&>(*this);
+        }
+
+        bool WorldToCell(const Vec2& point, int& column, int& row) const
+        {
+            if (const auto tileMap = View())
+            {
+                return tileMap->WorldToCell(point, column, row);
+            }
+
+            column = 0;
+            row = 0;
+            return false;
         }
 
         bool Collides(const Actor& actor) const
@@ -2358,22 +2471,22 @@ namespace HonTo
             return false;
         }
 
-        TileMapActor& hontoMap(const std::vector<std::string>& map)
+        TileMapActor& hontoMap(const std::vector<std::string>& map) const
         {
             return Map(map);
         }
 
-        TileMapActor& hontoTileSize(float width, float height)
+        TileMapActor& hontoTileSize(float width, float height) const
         {
             return TileSize(width, height);
         }
 
-        TileMapActor& hontoTile(char tile, Color color, bool solid = false, bool visible = true)
+        TileMapActor& hontoTile(char tile, Color color, bool solid = false, bool visible = true) const
         {
             return Tile(tile, color, solid, visible);
         }
 
-        TileMapActor& hontoTileTexture(char tile, const std::shared_ptr<Texture>& texture, Color tint = RGBA(255, 255, 255), bool solid = false, bool visible = true)
+        TileMapActor& hontoTileTexture(char tile, const std::shared_ptr<Texture>& texture, Color tint = RGBA(255, 255, 255), bool solid = false, bool visible = true) const
         {
             return TileTexture(tile, texture, tint, solid, visible);
         }
@@ -2388,19 +2501,34 @@ namespace HonTo
             Color tint = RGBA(255, 255, 255),
             bool solid = false,
             bool visible = true
-        )
+        ) const
         {
             return TileTextureRegion(tile, texture, x, y, width, height, tint, solid, visible);
         }
 
-        TileMapActor& hontoTileSolid(char tile, bool solid)
+        TileMapActor& hontoTileSolid(char tile, bool solid) const
         {
             return TileSolid(tile, solid);
         }
 
-        TileMapActor& hontoTileVisible(char tile, bool visible)
+        TileMapActor& hontoTileVisible(char tile, bool visible) const
         {
             return TileVisible(tile, visible);
+        }
+
+        char hontoCell(int column, int row) const
+        {
+            return Cell(column, row);
+        }
+
+        TileMapActor& hontoCell(int column, int row, char tile) const
+        {
+            return Cell(column, row, tile);
+        }
+
+        bool hontoWorldToCell(const Vec2& point, int& column, int& row) const
+        {
+            return WorldToCell(point, column, row);
         }
 
         bool hontoCollides(const Actor& actor) const
@@ -2440,6 +2568,172 @@ namespace HonTo
 
         return EnsurePhysics();
     }
+
+    class ParticleActor : public Actor
+    {
+    public:
+        ParticleActor() = default;
+        explicit ParticleActor(const Actor& actor)
+            : Actor(actor)
+        {
+        }
+
+        ParticleActor& EmissionRate(float particlesPerSecond) const
+        {
+            if (const auto view = View())
+            {
+                view->SetEmissionRate(particlesPerSecond);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& SpawnArea(float width, float height) const
+        {
+            if (const auto view = View())
+            {
+                view->SetSpawnArea({ width, height });
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& VelocityRange(const Vec2& minimum, const Vec2& maximum) const
+        {
+            if (const auto view = View())
+            {
+                view->SetVelocityRange(minimum, maximum);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& LifetimeRange(float minimumSeconds, float maximumSeconds) const
+        {
+            if (const auto view = View())
+            {
+                view->SetLifetimeRange(minimumSeconds, maximumSeconds);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& SizeRange(float minimumSize, float maximumSize) const
+        {
+            if (const auto view = View())
+            {
+                view->SetSizeRange(minimumSize, maximumSize);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& ColorRange(Color start, Color finish) const
+        {
+            if (const auto view = View())
+            {
+                view->SetColorRange(start, finish);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& UseCamera(bool useCamera) const
+        {
+            if (const auto view = View())
+            {
+                view->SetUseCamera(useCamera);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& Burst(int count) const
+        {
+            if (const auto view = View())
+            {
+                view->Burst(count);
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& Clear() const
+        {
+            if (const auto view = View())
+            {
+                view->ClearParticles();
+            }
+
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        int Count() const
+        {
+            if (const auto view = View())
+            {
+                return view->GetParticleCount();
+            }
+
+            return 0;
+        }
+
+        ParticleActor& hontoEmissionRate(float particlesPerSecond) const
+        {
+            return EmissionRate(particlesPerSecond);
+        }
+
+        ParticleActor& hontoSpawnArea(float width, float height) const
+        {
+            return SpawnArea(width, height);
+        }
+
+        ParticleActor& hontoVelocityRange(const Vec2& minimum, const Vec2& maximum) const
+        {
+            return VelocityRange(minimum, maximum);
+        }
+
+        ParticleActor& hontoLifetimeRange(float minimumSeconds, float maximumSeconds) const
+        {
+            return LifetimeRange(minimumSeconds, maximumSeconds);
+        }
+
+        ParticleActor& hontoSizeRange(float minimumSize, float maximumSize) const
+        {
+            return SizeRange(minimumSize, maximumSize);
+        }
+
+        ParticleActor& hontoColorRange(Color start, Color finish) const
+        {
+            return ColorRange(start, finish);
+        }
+
+        ParticleActor& hontoUseCamera(bool useCamera) const
+        {
+            return UseCamera(useCamera);
+        }
+
+        ParticleActor& hontoBurst(int count) const
+        {
+            return Burst(count);
+        }
+
+        ParticleActor& hontoClear() const
+        {
+            return Clear();
+        }
+
+        int hontoCount() const
+        {
+            return Count();
+        }
+
+    private:
+        std::shared_ptr<honto::ParticleEmitter> View() const
+        {
+            return std::dynamic_pointer_cast<honto::ParticleEmitter>(Share());
+        }
+    };
 
     class RaycastActor : public Actor
     {
@@ -2786,6 +3080,81 @@ namespace HonTo
             );
         }
 
+        void CameraFollowSmooth(const Actor& actor, float zoom = 1.0f, float responsiveness = 8.0f)
+        {
+            auto current = std::make_shared<Vec2>();
+            auto initialized = std::make_shared<bool>(false);
+
+            EveryFrame(
+                [actor, zoom, responsiveness, current, initialized](float deltaTime)
+                {
+                    if (!actor)
+                    {
+                        return;
+                    }
+
+                    if (auto* renderer = honto::Director::Get().GetRenderer())
+                    {
+                        const Vec2 visible = HonTo::VisibleSize();
+                        const Vec2 cameraHalf = visible / (2.0f * std::max(0.01f, zoom));
+                        const Vec2 target = actor.Position() + (actor.Size() * 0.5f) - cameraHalf;
+                        if (!*initialized)
+                        {
+                            *current = target;
+                            *initialized = true;
+                        }
+
+                        const float blend = std::clamp(std::max(0.0f, responsiveness) * deltaTime, 0.0f, 1.0f);
+                        *current = detail::Lerp(*current, target, blend);
+                        renderer->SetCamera(*current, zoom);
+                    }
+                }
+            );
+        }
+
+        void CameraShake(float strength, float seconds, float frequency = 18.0f) const
+        {
+            const float duration = std::max(0.01f, seconds);
+            auto remaining = std::make_shared<float>(duration);
+            auto time = std::make_shared<float>(0.0f);
+            auto previousOffset = std::make_shared<Vec2>();
+
+            const_cast<Stage&>(*this).EveryFrame(
+                [strength, duration, frequency, remaining, time, previousOffset](float deltaTime)
+                {
+                    if (*remaining <= 0.0f)
+                    {
+                        return;
+                    }
+
+                    if (auto* renderer = honto::Director::Get().GetRenderer())
+                    {
+                        const Vec2 base = renderer->GetCameraPosition() - *previousOffset;
+                        const float zoom = renderer->GetCameraZoom();
+
+                        *time += deltaTime;
+                        *remaining -= deltaTime;
+
+                        if (*remaining > 0.0f)
+                        {
+                            const float fade = std::clamp(*remaining / duration, 0.0f, 1.0f);
+                            const Vec2 offset {
+                                std::sin(*time * frequency * 6.2831853071f) * strength * fade,
+                                std::cos(*time * frequency * 4.7123889803f) * strength * 0.6f * fade
+                            };
+                            renderer->SetCamera(base + offset, zoom);
+                            *previousOffset = offset;
+                        }
+                        else
+                        {
+                            renderer->SetCamera(base, zoom);
+                            *previousOffset = {};
+                        }
+                    }
+                }
+            );
+        }
+
         Stage& hontoCameraAt(const Vec2& position, float zoom = 1.0f)
         {
             return CameraAt(position, zoom);
@@ -2804,6 +3173,16 @@ namespace HonTo
         void hontoCameraFollow(const Actor& actor, float zoom = 1.0f)
         {
             CameraFollow(actor, zoom);
+        }
+
+        void hontoCameraFollowSmooth(const Actor& actor, float zoom = 1.0f, float responsiveness = 8.0f)
+        {
+            CameraFollowSmooth(actor, zoom, responsiveness);
+        }
+
+        void hontoCameraShake(float strength, float seconds, float frequency = 18.0f) const
+        {
+            CameraShake(strength, seconds, frequency);
         }
 
         Stage& Gravity(float x, float y)
@@ -3277,6 +3656,44 @@ namespace HonTo
             return Button(name, text, width, height, normal, hover, pressed, border, textColor, glyphScale, useCamera);
         }
 
+        Actor Trigger(
+            const std::string& name,
+            float width,
+            float height,
+            bool visible = false,
+            Color color = RGBA(255, 214, 96, 96)
+        )
+        {
+            auto actor = Fill(name, width, height, color);
+            if (!visible)
+            {
+                actor.Hide();
+            }
+
+            return actor;
+        }
+
+        Actor hontoTrigger(
+            const std::string& name,
+            float width,
+            float height,
+            bool visible = false,
+            Color color = RGBA(255, 214, 96, 96)
+        )
+        {
+            return Trigger(name, width, height, visible, color);
+        }
+
+        ParticleActor Particles(const std::string& name, float width, float height)
+        {
+            return ParticleActor(CreateActor(name, honto::ParticleEmitter::Create(width, height)));
+        }
+
+        ParticleActor hontoParticles(const std::string& name, float width, float height)
+        {
+            return Particles(name, width, height);
+        }
+
         RaycastActor Raycast(const std::string& name, float width, float height)
         {
             auto view = std::make_shared<honto::RaycastView>();
@@ -3494,6 +3911,59 @@ namespace HonTo
         void hontoWhenClicked(const Actor& actor, std::function<void()> fn, Mouse button = Mouse::Left)
         {
             WhenClicked(actor, std::move(fn), button);
+        }
+
+        void WhenTouching(const Actor& first, const Actor& second, std::function<void()> fn, bool onceEver = false)
+        {
+            auto wasTouching = std::make_shared<bool>(false);
+            auto firedEver = std::make_shared<bool>(false);
+
+            EveryFrame(
+                [first, second, fn = std::move(fn), onceEver, wasTouching, firedEver](float)
+                {
+                    if (fn == nullptr || !first || !second)
+                    {
+                        return;
+                    }
+
+                    const bool touching = first.Touching(second);
+                    if (touching && !*wasTouching && (!onceEver || !*firedEver))
+                    {
+                        fn();
+                        *firedEver = true;
+                    }
+
+                    *wasTouching = touching;
+                }
+            );
+        }
+
+        void WhileTouching(const Actor& first, const Actor& second, std::function<void(float)> fn)
+        {
+            EveryFrame(
+                [first, second, fn = std::move(fn)](float deltaTime)
+                {
+                    if (fn == nullptr || !first || !second)
+                    {
+                        return;
+                    }
+
+                    if (first.Touching(second))
+                    {
+                        fn(deltaTime);
+                    }
+                }
+            );
+        }
+
+        void hontoWhenTouching(const Actor& first, const Actor& second, std::function<void()> fn, bool onceEver = false)
+        {
+            WhenTouching(first, second, std::move(fn), onceEver);
+        }
+
+        void hontoWhileTouching(const Actor& first, const Actor& second, std::function<void(float)> fn)
+        {
+            WhileTouching(first, second, std::move(fn));
         }
 
         void GoWindow(
@@ -3996,6 +4466,7 @@ namespace honto
     using hontoTexture = Texture;
     using hontoTextureRegion = TextureRegion;
     using hontoTileMapActor = HonTo::TileMapActor;
+    using hontoParticleActor = HonTo::ParticleActor;
     using hontoRaycastActor = HonTo::RaycastActor;
 
     inline Color hontoRGBA(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a = 255)

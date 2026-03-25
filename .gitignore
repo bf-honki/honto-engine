@@ -1,4 +1,5 @@
 build/
+build_verify/
 dist/
 generated/
 .vs/

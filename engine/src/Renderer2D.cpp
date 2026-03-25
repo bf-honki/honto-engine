@@ -26,6 +26,16 @@ namespace honto
         m_CameraZoom = 1.0f;
     }
 
+    Vec2 Renderer2D::GetCameraPosition() const
+    {
+        return m_CameraPosition;
+    }
+
+    float Renderer2D::GetCameraZoom() const
+    {
+        return m_CameraZoom;
+    }
+
     void Renderer2D::BeginFrame(Color clearColor)
     {
         if (m_Pixels == nullptr || m_Width <= 0 || m_Height <= 0)

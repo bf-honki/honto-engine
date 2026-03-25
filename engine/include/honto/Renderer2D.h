@@ -17,6 +17,8 @@ namespace honto
         void BeginFrame(Color clearColor);
         void SetCamera(const Vec2& position, float zoom = 1.0f);
         void ResetCamera();
+        Vec2 GetCameraPosition() const;
+        float GetCameraZoom() const;
         void DrawFilledRect(const Vec2& position, const Vec2& size, Color color, bool useCamera = true);
         void DrawRectOutline(const Vec2& position, const Vec2& size, Color color, int thickness = 1, bool useCamera = true);
         void DrawTexturedRect(const Vec2& position, const Vec2& size, const Texture& texture, Color tint = { 255, 255, 255, 255 }, bool useCamera = true);

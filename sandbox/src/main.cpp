@@ -90,6 +90,7 @@ namespace
     void BuildPlatformScene(honto::hontoStage& stage);
     void BuildDoomScene(honto::hontoStage& stage);
     void BuildMultiverseScene(honto::hontoStage& stage);
+    void BuildEditorWindow(honto::hontoStage& stage);
     void BuildToolsWindow(honto::hontoStage& stage);
 
     void BuildPlatformScene(honto::hontoStage& stage)
@@ -132,7 +133,7 @@ namespace
             4
         );
 
-        honto::hontoPrint("Platform scene: A/D move, Space jump, F5 save level, Enter opens DOOM, Q travels to the multiverse window.");
+        honto::hontoPrint("Platform scene: A/D move, Space jump, F5 save level, Enter opens DOOM, Q multiverse, editor window paints levels.");
 
         stage.hontoBackground(18, 22, 34);
         stage.hontoGravity(0.0f, 760.0f);
@@ -163,7 +164,7 @@ namespace
             .hontoLoop()
             .hontoPlay();
 
-        stage.hontoCameraFollow(player, 1.0f);
+        stage.hontoCameraFollowSmooth(player, 1.0f, 8.0f);
 
         auto portal = stage.hontoChecker(
             "portal",
@@ -182,6 +183,40 @@ namespace
             .hontoPingPong()
             .hontoLoop()
             .hontoPlay();
+
+        auto portalTrigger = stage.hontoTrigger("portal_trigger", 28.0f, 44.0f)
+            .hontoAt(portalStart.x - 4.0f, portalStart.y - 4.0f)
+            .hontoLayer(5);
+
+        auto portalGlow = stage.hontoParticles("portal_glow", 28.0f, 44.0f);
+        portalGlow.hontoAt(portalStart.x - 4.0f, portalStart.y - 4.0f).hontoLayer(3);
+        portalGlow.hontoEmissionRate(18.0f);
+        portalGlow.hontoSpawnArea(28.0f, 44.0f);
+        portalGlow.hontoVelocityRange({ -12.0f, -32.0f }, { 12.0f, -78.0f });
+        portalGlow.hontoLifetimeRange(0.35f, 0.9f);
+        portalGlow.hontoSizeRange(2.0f, 4.0f);
+        portalGlow.hontoColorRange(honto::hontoRGBA(255, 236, 162, 220), honto::hontoRGBA(120, 92, 255, 0));
+
+        auto patroller = stage.hontoBox("patroller", 16.0f, 16.0f, honto::hontoRGBA(242, 142, 84))
+            .hontoAt(182.0f, 104.0f)
+            .hontoLayer(4)
+            .hontoUseGravity()
+            .hontoCollideWithMap(world)
+            .hontoPatrolX(182.0f, 264.0f, 44.0f);
+
+        auto hunter = stage.hontoBox("hunter", 16.0f, 16.0f, honto::hontoRGBA(214, 86, 102))
+            .hontoAt(312.0f, 88.0f)
+            .hontoLayer(4)
+            .hontoUseGravity()
+            .hontoCollideWithMap(world)
+            .hontoChaseX(player, 58.0f, 18.0f);
+
+        auto alertSpark = stage.hontoParticles("alert_fx", 18.0f, 18.0f);
+        alertSpark.hontoAt(0.0f, 0.0f).hontoLayer(5);
+        alertSpark.hontoSizeRange(2.0f, 5.0f);
+        alertSpark.hontoLifetimeRange(0.25f, 0.55f);
+        alertSpark.hontoVelocityRange({ -36.0f, -24.0f }, { 36.0f, -96.0f });
+        alertSpark.hontoColorRange(honto::hontoRGBA(255, 210, 156, 255), honto::hontoRGBA(255, 82, 64, 0));
 
         stage.hontoText("hud_title", hudTitle, honto::hontoRGBA(238, 245, 255), 2)
             .hontoAt(8.0f, 8.0f)
@@ -242,10 +277,47 @@ namespace
             }
         );
 
+        stage.hontoWhenTouching(
+            player,
+            portalTrigger,
+            [portalUnlocked, statusLabel, stage, portalGlow]()
+            {
+                if (*portalUnlocked)
+                {
+                    return;
+                }
+
+                *portalUnlocked = true;
+                statusLabel.hontoTextValue("STATUS: ENTER DOOM  Q MULTIVERSE");
+                portalGlow.hontoBurst(26);
+                stage.hontoPlayTone(980, 120);
+                stage.hontoPlayAlias("SystemAsterisk");
+                stage.hontoCameraShake(2.5f, 0.35f, 19.0f);
+                honto::hontoPrint("Portal unlocked. Press Enter for DOOM or Q for the multiverse window.");
+            },
+            true
+        );
+
+        stage.hontoWhenTouching(
+            player,
+            hunter,
+            [stage, statusLabel, player, playerStart, alertSpark]()
+            {
+                player.hontoAt(playerStart).hontoVelocity(0.0f, 0.0f);
+                alertSpark.hontoAt(playerStart);
+                alertSpark.hontoBurst(20);
+                statusLabel.hontoTextValue("STATUS: HUNTER HIT  RESET");
+                stage.hontoPlayAlias("SystemHand");
+                stage.hontoCameraShake(3.0f, 0.28f, 22.0f);
+            }
+        );
+
         stage.hontoEveryFrame(
-            [player, portal, portalUnlocked, jumpGate, progressBar, statusLabel, portalStart, stage](float)
+            [player, portalTrigger, portalUnlocked, jumpGate, progressBar, statusLabel, portalStart, patroller, hunter](float)
             {
                 player.hontoPaint(player.hontoIsOnGround() ? honto::hontoRGBA(255, 255, 255) : honto::hontoRGBA(196, 220, 255));
+                patroller.hontoPaint(honto::hontoRGBA(242, 142, 84));
+                hunter.hontoPaint(honto::hontoRGBA(214, 86, 102));
 
                 if (player.hontoIsOnGround())
                 {
@@ -256,17 +328,13 @@ namespace
                 const float progress = std::clamp(player.Position().x / portalDistance, 0.0f, 1.0f);
                 progressBar.hontoBarValue(progress);
 
-                if (player.hontoTouching(portal) && !*portalUnlocked)
-                {
-                    *portalUnlocked = true;
-                    statusLabel.hontoTextValue("STATUS: ENTER DOOM  Q MULTIVERSE");
-                    stage.hontoPlayTone(980, 120);
-                    stage.hontoPlayAlias("SystemAsterisk");
-                    honto::hontoPrint("Portal unlocked. Press Enter for DOOM or Q for the multiverse window.");
-                }
-                else if (!*portalUnlocked)
+                if (!*portalUnlocked)
                 {
                     statusLabel.hontoTextValue("STATUS: FIND PORTAL");
+                }
+                else if (player.hontoTouching(portalTrigger))
+                {
+                    statusLabel.hontoTextValue("STATUS: PORTAL READY");
                 }
             }
         );
@@ -309,7 +377,7 @@ namespace
 
     void BuildDoomScene(honto::hontoStage& stage)
     {
-        honto::hontoPrint("DOOM scene: W/S move, A/D strafe, Shift run, E open doors, Tab map, Q multiverse, Enter back.");
+        honto::hontoPrint("DOOM scene: W/S move, A/D strafe, Shift run, E open doors, Tab map, Space fires screen shake, Q multiverse, Enter back.");
 
         auto wallA = honto::hontoCheckerTexture(
             32,
@@ -393,9 +461,21 @@ namespace
         stage.hontoText("doom_hint", "W/S MOVE  A/D STRAFE  SHIFT RUN  E DOOR", honto::hontoRGBA(238, 245, 255), 1)
             .hontoAt(8.0f, 4.0f)
             .hontoLayer(4);
-        stage.hontoText("doom_hint_2", "TAB MAP  Q MULTIVERSE  ENTER BACK", honto::hontoRGBA(190, 204, 224), 1)
+        stage.hontoText("doom_hint_2", "TAB MAP  SPACE SHAKE  Q MULTIVERSE", honto::hontoRGBA(190, 204, 224), 1)
             .hontoAt(8.0f, 12.0f)
             .hontoLayer(4);
+        stage.hontoText("doom_hint_3", "ENTER BACK", honto::hontoRGBA(164, 180, 204), 1)
+            .hontoAt(230.0f, 12.0f)
+            .hontoLayer(4);
+
+        stage.hontoWhenPressed(
+            honto::hontoKey::Space,
+            [stage]()
+            {
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                stage.hontoCameraShake(2.1f, 0.16f, 24.0f);
+            }
+        );
 
         stage.hontoWhenPressed(
             honto::hontoKey::Q,
@@ -444,6 +524,15 @@ namespace
         stage.hontoFill("nebula", 320.0f, 180.0f, honto::hontoRGBA(26, 38, 72, 180))
             .hontoAt(0.0f, 0.0f)
             .hontoLayer(0);
+        auto stars = stage.hontoParticles("stars", 320.0f, 180.0f);
+        stars.hontoAt(0.0f, 0.0f).hontoLayer(0);
+        stars.hontoEmissionRate(28.0f);
+        stars.hontoSpawnArea(320.0f, 180.0f);
+        stars.hontoVelocityRange({ -4.0f, 8.0f }, { 4.0f, 26.0f });
+        stars.hontoLifetimeRange(0.8f, 1.9f);
+        stars.hontoSizeRange(1.0f, 3.0f);
+        stars.hontoColorRange(honto::hontoRGBA(190, 226, 255, 210), honto::hontoRGBA(84, 128, 220, 0));
+        stars.hontoUseCamera(false);
         stage.hontoOutline("frame", 318.0f, 178.0f, honto::hontoRGBA(116, 162, 255), 1)
             .hontoAt(1.0f, 1.0f)
             .hontoLayer(1);
@@ -569,6 +658,235 @@ namespace
                 orbit.hontoAt(146.0f + (std::sin(t * 1.4f) * 18.0f), 74.0f + (std::cos(t * 1.2f) * 10.0f));
                 traveler.hontoPaint(stage.hontoHasMouse() ? honto::hontoRGBA(166, 255, 220) : honto::hontoRGBA(126, 255, 196));
                 mouseText.hontoTextValue(MakeMouseText(stage));
+            }
+        );
+    }
+
+    void BuildEditorWindow(honto::hontoStage& stage)
+    {
+        auto level = std::make_shared<honto::hontoLevel>(LoadPlatformLevel());
+        auto brush = std::make_shared<char>('#');
+        auto lastPaintColumn = std::make_shared<int>(-1);
+        auto lastPaintRow = std::make_shared<int>(-1);
+
+        auto tileSheet = honto::hontoFrameSheetTexture(
+            16,
+            16,
+            {
+                honto::hontoRGBA(82, 126, 86),
+                honto::hontoRGBA(142, 102, 76),
+                honto::hontoRGBA(74, 110, 164),
+                honto::hontoRGBA(176, 186, 94)
+            },
+            4
+        );
+
+        honto::hontoPrint("Level editor: left paint, right erase, choose brush with buttons, save to JSON or HONTO.");
+
+        stage.hontoBackground(16, 18, 26);
+        stage.hontoFill("editor_backdrop", 320.0f, 96.0f, honto::hontoRGBA(22, 28, 42))
+            .hontoAt(0.0f, 0.0f)
+            .hontoLayer(0);
+
+        auto world = stage.hontoTileMap("editor_world", level->map, 8.0f, 8.0f);
+        world.hontoAt(0.0f, 0.0f);
+        world.hontoLayer(1);
+        world.hontoTileTextureRegion('#', tileSheet, 0, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+        world.hontoTileTextureRegion('B', tileSheet, 16, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+        world.hontoTileTextureRegion('C', tileSheet, 32, 0, 16, 16, honto::hontoRGBA(255, 255, 255), true, true);
+
+        auto cursor = stage.hontoOutline("editor_cursor", 8.0f, 8.0f, honto::hontoRGBA(255, 244, 184), 1)
+            .hontoAt(0.0f, 0.0f)
+            .hontoLayer(4)
+            .hontoShow(false);
+
+        auto paintFx = stage.hontoParticles("paint_fx", 8.0f, 8.0f);
+        paintFx.hontoAt(0.0f, 0.0f).hontoLayer(5);
+        paintFx.hontoSizeRange(1.0f, 3.0f);
+        paintFx.hontoLifetimeRange(0.2f, 0.5f);
+        paintFx.hontoVelocityRange({ -24.0f, -18.0f }, { 24.0f, -70.0f });
+        paintFx.hontoColorRange(honto::hontoRGBA(255, 232, 162, 255), honto::hontoRGBA(255, 128, 88, 0));
+        paintFx.hontoUseCamera(false);
+
+        stage.hontoText("editor_title", "HONTO LEVEL EDITOR", honto::hontoRGBA(236, 245, 255), 2)
+            .hontoAt(8.0f, 102.0f)
+            .hontoLayer(3);
+        auto brushLabel = stage.hontoText("editor_brush", "BRUSH: SOLID #", honto::hontoRGBA(255, 236, 162), 1)
+            .hontoAt(8.0f, 120.0f)
+            .hontoLayer(3);
+        auto statusLabel = stage.hontoText("editor_status", "READY", honto::hontoRGBA(182, 198, 224), 1)
+            .hontoAt(8.0f, 132.0f)
+            .hontoLayer(3);
+        auto mouseLabel = stage.hontoText("editor_mouse", "CELL: --,--", honto::hontoRGBA(160, 178, 208), 1)
+            .hontoAt(8.0f, 144.0f)
+            .hontoLayer(3);
+
+        auto clearButton = stage.hontoButton("brush_clear", "CLEAR .", 72.0f, 14.0f)
+            .hontoAt(8.0f, 160.0f)
+            .hontoLayer(3);
+        auto solidButton = stage.hontoButton("brush_solid", "SOLID #", 72.0f, 14.0f)
+            .hontoAt(84.0f, 160.0f)
+            .hontoLayer(3);
+        auto brickButton = stage.hontoButton("brush_brick", "BRICK B", 72.0f, 14.0f)
+            .hontoAt(160.0f, 160.0f)
+            .hontoLayer(3);
+        auto cloudButton = stage.hontoButton("brush_cloud", "CLOUD C", 72.0f, 14.0f)
+            .hontoAt(236.0f, 160.0f)
+            .hontoLayer(3);
+        auto saveJsonButton = stage.hontoButton("editor_save_json", "SAVE JSON", 96.0f, 14.0f)
+            .hontoAt(208.0f, 102.0f)
+            .hontoLayer(3);
+        auto saveTextButton = stage.hontoButton("editor_save_honto", "SAVE HONTO", 96.0f, 14.0f)
+            .hontoAt(208.0f, 120.0f)
+            .hontoLayer(3);
+        auto reloadButton = stage.hontoButton("editor_reload", "RELOAD", 96.0f, 14.0f)
+            .hontoAt(208.0f, 138.0f)
+            .hontoLayer(3);
+
+        stage.hontoWhenClicked(
+            clearButton,
+            [brush, brushLabel, statusLabel, stage]()
+            {
+                *brush = '.';
+                brushLabel.hontoTextValue("BRUSH: CLEAR .");
+                statusLabel.hontoTextValue("STATUS: CLEAR BRUSH");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            solidButton,
+            [brush, brushLabel, statusLabel, stage]()
+            {
+                *brush = '#';
+                brushLabel.hontoTextValue("BRUSH: SOLID #");
+                statusLabel.hontoTextValue("STATUS: SOLID BRUSH");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            brickButton,
+            [brush, brushLabel, statusLabel, stage]()
+            {
+                *brush = 'B';
+                brushLabel.hontoTextValue("BRUSH: BRICK B");
+                statusLabel.hontoTextValue("STATUS: BRICK BRUSH");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            cloudButton,
+            [brush, brushLabel, statusLabel, stage]()
+            {
+                *brush = 'C';
+                brushLabel.hontoTextValue("BRUSH: CLOUD C");
+                statusLabel.hontoTextValue("STATUS: CLOUD BRUSH");
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+            }
+        );
+
+        stage.hontoWhenClicked(
+            saveJsonButton,
+            [stage, level, statusLabel]()
+            {
+                if (honto::hontoSaveLevel("sandbox/levels/platform_editor.json", *level))
+                {
+                    stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                    statusLabel.hontoTextValue("STATUS: SAVED platform_editor.json");
+                }
+                else
+                {
+                    statusLabel.hontoTextValue("STATUS: JSON SAVE FAILED");
+                }
+            }
+        );
+
+        stage.hontoWhenClicked(
+            saveTextButton,
+            [stage, level, statusLabel]()
+            {
+                if (honto::hontoSaveLevel("sandbox/levels/platform_editor.honto", *level))
+                {
+                    stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                    statusLabel.hontoTextValue("STATUS: SAVED platform_editor.honto");
+                }
+                else
+                {
+                    statusLabel.hontoTextValue("STATUS: HONTO SAVE FAILED");
+                }
+            }
+        );
+
+        stage.hontoWhenClicked(
+            reloadButton,
+            [stage, level, world, statusLabel]()
+            {
+                *level = LoadPlatformLevel();
+                world.hontoMap(level->map);
+                stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
+                statusLabel.hontoTextValue("STATUS: LEVEL RELOADED");
+            }
+        );
+
+        stage.hontoEveryFrame(
+            [stage, world, cursor, paintFx, level, brush, mouseLabel, statusLabel, lastPaintColumn, lastPaintRow](float)
+            {
+                int column = 0;
+                int row = 0;
+                const bool inside = world.hontoWorldToCell(stage.hontoMousePosition(), column, row);
+
+                if (inside)
+                {
+                    cursor.hontoShow(true).hontoAt(static_cast<float>(column * 8), static_cast<float>(row * 8));
+                    mouseLabel.hontoTextValue("CELL: " + std::to_string(column) + "," + std::to_string(row));
+
+                    if (stage.hontoMouseDown(honto::hontoMouse::Left))
+                    {
+                        if (*lastPaintColumn != column || *lastPaintRow != row || world.hontoCell(column, row) != *brush)
+                        {
+                            world.hontoCell(column, row, *brush);
+                            if (row >= 0 && row < static_cast<int>(level->map.size()) && column >= 0 && column < static_cast<int>(level->map[static_cast<std::size_t>(row)].size()))
+                            {
+                                level->map[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] = *brush;
+                            }
+                            paintFx.hontoAt(static_cast<float>(column * 8), static_cast<float>(row * 8));
+                            paintFx.hontoBurst(8);
+                            statusLabel.hontoTextValue("STATUS: PAINT " + std::to_string(column) + "," + std::to_string(row));
+                            *lastPaintColumn = column;
+                            *lastPaintRow = row;
+                        }
+                    }
+                    else if (stage.hontoMouseDown(honto::hontoMouse::Right))
+                    {
+                        if (*lastPaintColumn != column || *lastPaintRow != row || world.hontoCell(column, row) != '.')
+                        {
+                            world.hontoCell(column, row, '.');
+                            if (row >= 0 && row < static_cast<int>(level->map.size()) && column >= 0 && column < static_cast<int>(level->map[static_cast<std::size_t>(row)].size()))
+                            {
+                                level->map[static_cast<std::size_t>(row)][static_cast<std::size_t>(column)] = '.';
+                            }
+                            paintFx.hontoAt(static_cast<float>(column * 8), static_cast<float>(row * 8));
+                            paintFx.hontoBurst(6);
+                            statusLabel.hontoTextValue("STATUS: ERASE " + std::to_string(column) + "," + std::to_string(row));
+                            *lastPaintColumn = column;
+                            *lastPaintRow = row;
+                        }
+                    }
+                    else
+                    {
+                        *lastPaintColumn = -1;
+                        *lastPaintRow = -1;
+                    }
+                }
+                else
+                {
+                    cursor.hontoShow(false);
+                    mouseLabel.hontoTextValue("CELL: --,--");
+                    *lastPaintColumn = -1;
+                    *lastPaintRow = -1;
+                }
             }
         );
     }
@@ -869,6 +1187,15 @@ int main()
             180,
             BuildToolsWindow,
             honto::hontoRGBA(20, 22, 30)
+        )
+        .hontoOpenWindow(
+            "honto Level Editor",
+            980,
+            620,
+            320,
+            180,
+            BuildEditorWindow,
+            honto::hontoRGBA(16, 18, 26)
         )
         .hontoPlay(BuildPlatformScene)
         .hontoRun();

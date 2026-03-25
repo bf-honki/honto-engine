@@ -27,7 +27,7 @@
 - `engine/include/honto/Renderer2D.h`
 - `engine/src/Renderer2D.cpp`
 
-이 계층은 노드 트리, 색 사각형, 스프라이트, 텍스트, 진행 바, 버튼, 카메라, 알파 블렌딩을 처리합니다.
+이 계층은 노드 트리, 색 사각형, 스프라이트, 텍스트, 진행 바, 버튼, 파티클, 카메라, 알파 블렌딩을 처리합니다.
 
 ### 3. 편의 DSL
 
@@ -113,10 +113,16 @@ cmake --build build --config Release
 - `stage.hontoBox(...)`
 - `stage.hontoImage(...)`
 - `stage.hontoTileMap(...)`
+- `stage.hontoParticles(...)`
+- `stage.hontoTrigger(...)`
 - `stage.hontoText(...)`
 - `stage.hontoButton(...)`
 - `stage.hontoEveryFrame(...)`
 - `stage.hontoWhenPressed(...)`
+- `stage.hontoWhenTouching(...)`
+- `stage.hontoWhileTouching(...)`
+- `stage.hontoCameraFollowSmooth(...)`
+- `stage.hontoCameraShake(...)`
 - `stage.hontoGoWithFade(...)`
 - `stage.hontoGoWindowWithFade(...)`
 
@@ -129,6 +135,9 @@ cmake --build build --config Release
 - `hontoUseGravity()`
 - `hontoCollideWithMap(...)`
 - `hontoJumpWhenPressed(...)`
+- `hontoPatrolX(...)`
+- `hontoChase(...)`
+- `hontoChaseX(...)`
 - `hontoAnimate()`
 - `hontoAnimateFrames()`
 
@@ -190,17 +199,21 @@ int main()
 - 2D 플랫폼 게임
 - 타일맵 충돌
 - 프레임 애니메이션
+- 파티클 이펙트
+- 트리거 존
+- 부드러운 카메라 추적과 흔들림
+- 간단 순찰/추적 AI
 - 버튼과 HUD UI
+- 레벨 에디터 창
 - JSON/Tiled 스타일 레벨 로딩
 - 오디오 버스 믹서
 - 둠 스타일 2.5D
 
 ## 아직 남아 있는 큰 축
 
-- 파티클과 화면 효과
 - 더 풍부한 UI 위젯
-- 에디터 인스펙터
-- 적 AI와 경로 탐색
+- 에디터 인스펙터와 속성 편집
+- 더 고급 적 AI와 경로 탐색
 - 스크립팅 계층
 
 ## 추천 시작 순서

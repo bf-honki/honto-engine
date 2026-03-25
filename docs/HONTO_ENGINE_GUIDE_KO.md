@@ -13,8 +13,10 @@
 - 마우스 좌표와 클릭 입력
 - 레벨 파일 저장/불러오기, JSON 저장/불러오기, Tiled 스타일 JSON 로딩
 - WAV 재생, 시스템 사운드 alias 재생, 간단 톤 재생, 오디오 버스 믹서
-- 카메라 따라가기
+- 카메라 따라가기, 부드러운 카메라 추적, 카메라 흔들림
 - 창 간 장면 이동, 창 투명도, 창 테두리 숨기기, 창 고정, 창 크기/위치 제어
+- 파티클 이펙트, 트리거 존, 간단 순찰/추적 AI
+- 클릭으로 타일을 칠하고 저장하는 레벨 에디터 창
 - 2D 맵을 이용한 둠 스타일 2.5D 레이캐스트 화면, 문, 안개, 스프라이트, 무기 오버레이, 미니맵
 
 이번 버전은 Unity, Godot, cocos2d-x, Unreal의 공통 핵심 축인 `장면`, `카메라`, `에셋`, `애니메이션`, `전환`, `윈도우`, `2D/2.5D 확장성`을 우선 구현한 상태입니다.
@@ -151,7 +153,38 @@ hero.hontoAnimateFrames()
 ```cpp
 stage.hontoCameraAt(100.0f, 0.0f, 1.0f);
 stage.hontoCameraFollow(player, 1.0f);
+stage.hontoCameraFollowSmooth(player, 1.0f, 8.0f);
+stage.hontoCameraShake(3.0f, 0.25f, 18.0f);
 stage.hontoCameraReset();
+```
+
+### 6-1. 파티클
+
+```cpp
+auto fx = stage.hontoParticles("goal_fx", 24.0f, 32.0f);
+fx.hontoAt(270.0f, 34.0f).hontoLayer(2);
+fx.hontoEmissionRate(16.0f);
+fx.hontoSpawnArea(24.0f, 32.0f);
+fx.hontoVelocityRange({ -10.0f, -26.0f }, { 10.0f, -64.0f });
+fx.hontoLifetimeRange(0.35f, 0.9f);
+fx.hontoSizeRange(2.0f, 4.0f);
+fx.hontoColorRange(honto::hontoRGBA(255, 236, 162, 220), honto::hontoRGBA(255, 132, 92, 0));
+fx.hontoBurst(20);
+```
+
+### 6-2. 트리거와 간단 AI
+
+```cpp
+auto trigger = stage.hontoTrigger("goal_trigger", 26.0f, 34.0f).hontoAt(270.0f, 34.0f);
+
+auto enemy = stage.hontoBox("enemy", 16.0f, 16.0f, honto::hontoRGBA(214, 86, 102))
+    .hontoAt(220.0f, 80.0f)
+    .hontoPatrolX(220.0f, 280.0f, 44.0f);
+
+stage.hontoWhenTouching(player, trigger, []()
+{
+    honto::hontoPrint("entered");
+});
 ```
 
 ### 7. 텍스트와 UI
@@ -252,6 +285,17 @@ return honto::hontoGame("Main")
     .hontoPlay(BuildMainScene)
     .hontoRun();
 ```
+
+### 11-1. 레벨 에디터 창
+
+샌드박스에는 별도 `honto Level Editor` 창이 같이 뜨고, 여기서 마우스로 타일을 칠한 뒤 `.json`과 `.honto` 파일로 저장할 수 있습니다.
+
+핵심은 아래 흐름입니다.
+
+- `stage.hontoTileMap(...)`으로 편집 대상 맵 표시
+- `stage.hontoMousePosition()`과 `world.hontoWorldToCell(...)`로 현재 셀 계산
+- `world.hontoCell(column, row, tile)`로 실제 타일 변경
+- `honto::hontoSaveLevel(...)`로 저장
 
 ### 12. 멀티버스 창 이동과 창 스타일 제어
 
@@ -425,15 +469,15 @@ raycast.hontoMap({
 - 텍스처 로딩은 현재 `BMP`와 `PNG` 중심입니다.
 - 오디오는 현재 Windows 기본 재생 경로 중심입니다.
 - 타일 충돌은 축 정렬 박스 기준의 가벼운 플랫폼형 해결 방식입니다.
-- 타일맵 에디터와 고급 충돌 계층은 아직 없습니다.
+- 샌드박스에는 기본 레벨 에디터 창이 있지만, 정식 인스펙터형 에디터는 아직 없습니다.
 - 2.5D는 둠식 레이캐스트이며, 진짜 폴리곤 3D 엔진은 아닙니다.
 - 하드웨어 가속 3D 렌더러나 셰이더 파이프라인은 아직 없습니다.
 
 ## 다음에 붙이면 좋은 것
 
 1. 슬라이더, 체크박스, 텍스트 입력 같은 고급 UI 위젯
-2. 파티클, 카메라 흔들림, 화면 효과
-3. 적 AI, 트리거, 경로 탐색
+2. 포스트 효과와 더 풍부한 카메라 연출
+3. 더 고급 적 AI와 경로 탐색
 4. 에디터용 씬 인스펙터와 프로젝트 포맷
 5. 에셋 파이프라인 강화와 패키징
 6. Lua 또는 C# 스크립팅 계층

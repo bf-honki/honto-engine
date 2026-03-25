@@ -40,6 +40,9 @@ namespace honto
         void SetTileTextureRegion(char tile, const std::shared_ptr<Texture>& texture, const TextureRegion& region, Color tint = { 255, 255, 255, 255 }, bool solid = false, bool visible = true);
         void SetTileSolid(char tile, bool solid);
         void SetTileVisible(char tile, bool visible);
+        char GetCell(int column, int row) const;
+        void SetCell(int column, int row, char tile);
+        bool WorldToCell(const Vec2& point, int& column, int& row) const;
 
         bool IsSolidAtCell(int column, int row) const;
         bool IsSolidAtWorldPoint(const Vec2& point) const;

@@ -13,6 +13,8 @@ cmake --build build --config Release
 
 - a code-first game scene
 - gravity and tile collision
+- smooth camera follow and camera shake
+- trigger zones and particle bursts
 - tween animation
 - a second utility window
 - a scene transition

@@ -7,6 +7,7 @@
 #include "Texture.h"
 
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -241,6 +242,66 @@ namespace honto
         bool m_Hovered = false;
         bool m_Pressed = false;
         bool m_UseCamera = false;
+    };
+
+    class ParticleEmitter : public Node
+    {
+    public:
+        bool Init() override;
+        static std::shared_ptr<ParticleEmitter> Create(float width, float height);
+
+        void SetEmissionRate(float particlesPerSecond);
+        float GetEmissionRate() const;
+        void SetSpawnArea(const Vec2& size);
+        Vec2 GetSpawnArea() const;
+        void SetVelocityRange(const Vec2& minimum, const Vec2& maximum);
+        Vec2 GetVelocityMin() const;
+        Vec2 GetVelocityMax() const;
+        void SetLifetimeRange(float minimumSeconds, float maximumSeconds);
+        float GetLifetimeMin() const;
+        float GetLifetimeMax() const;
+        void SetSizeRange(float minimumSize, float maximumSize);
+        float GetSizeMin() const;
+        float GetSizeMax() const;
+        void SetColorRange(Color start, Color finish);
+        Color GetStartColor() const;
+        Color GetFinishColor() const;
+        void SetUseCamera(bool useCamera);
+        bool UsesCamera() const;
+        void Burst(int count);
+        void ClearParticles();
+        int GetParticleCount() const;
+
+        void Update(float deltaTime) override;
+        void Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale) override;
+
+    private:
+        struct Particle
+        {
+            Vec2 position {};
+            Vec2 velocity {};
+            float life = 0.0f;
+            float maxLife = 1.0f;
+            float size = 2.0f;
+        };
+
+        float RandomFloat(float minimum, float maximum);
+        void SpawnParticle();
+
+        std::vector<Particle> m_Particles;
+        std::mt19937 m_Rng;
+        float m_EmissionRate = 0.0f;
+        float m_EmissionCarry = 0.0f;
+        Vec2 m_SpawnArea {};
+        Vec2 m_VelocityMin { -30.0f, -30.0f };
+        Vec2 m_VelocityMax { 30.0f, -80.0f };
+        float m_LifetimeMin = 0.35f;
+        float m_LifetimeMax = 0.9f;
+        float m_SizeMin = 2.0f;
+        float m_SizeMax = 5.0f;
+        Color m_StartColor { 255, 236, 162, 255 };
+        Color m_FinishColor { 255, 128, 64, 0 };
+        bool m_UseCamera = true;
     };
 
     class CodeScene : public Scene, public Node

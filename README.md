@@ -11,10 +11,10 @@ This version now covers the core runtime features most people expect when protot
 - a software 2D renderer with a pixel backbuffer
 - scenes, entities, transforms, sprites, and simple rigid bodies
 - a cocos2d-x style code-first scene graph with nodes, layers, and sprites
-- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI/buttons, mouse input, audio buses, level files, scene transitions, multiverse-style window travel, and runtime window styling
+- a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI/buttons, mouse input, audio buses, level files, scene transitions, multiverse-style window travel, runtime window styling, particles, triggers, simple AI, and camera shake
 - keyboard and mouse input
 - level loading from `.honto`, HonTo JSON, and Tiled-style JSON
-- a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, button clicks, JSON/Tiled loading, audio mixer controls, multiverse window travel, and a DOOM-style 2.5D scene with doors, fog, sprites, a weapon overlay, and a minimap
+- a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, button clicks, JSON/Tiled loading, audio mixer controls, a click-to-paint level editor window, multiverse window travel, and a DOOM-style 2.5D scene with doors, fog, sprites, a weapon overlay, and a minimap
 - installable CMake package support so other developers can use the engine on a different machine with `find_package(HonToEngine CONFIG REQUIRED)`
 - a reusable starter template and standalone quickstart example for external game projects
 
@@ -257,16 +257,18 @@ int main()
 Useful helpers in this style:
 
 - `honto::hontoGame(...)`, `game.hontoWindow(...)`, `game.hontoWindowId(...)`, `game.hontoBorderless(...)`, `game.hontoResizable(...)`, `game.hontoOpacity(...)`, `game.hontoTopMost(...)`, `game.hontoOpenWindow(...)`
-- `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`, `stage.hontoTileMap(...)`, `stage.hontoText(...)`, `stage.hontoBar(...)`, `stage.hontoButton(...)`
+- `stage.hontoBox(...)`, `stage.hontoFill(...)`, `stage.hontoOutline(...)`, `stage.hontoTileMap(...)`, `stage.hontoText(...)`, `stage.hontoBar(...)`, `stage.hontoButton(...)`, `stage.hontoTrigger(...)`, `stage.hontoParticles(...)`
 - `actor.hontoAt(...)`, `actor.hontoMove(...)`, `actor.hontoPaint(...)`, `actor.hontoLayer(...)`
-- `actor.hontoUseGravity()`, `actor.hontoCollideWithMap(...)`, `actor.hontoJumpWhenPressed(...)`
+- `actor.hontoUseGravity()`, `actor.hontoCollideWithMap(...)`, `actor.hontoJumpWhenPressed(...)`, `actor.hontoPatrolX(...)`, `actor.hontoChase(...)`, `actor.hontoChaseX(...)`
 - `actor.hontoContainsPoint(...)`, `stage.hontoMousePosition()`, `stage.hontoWhenClicked(...)`
+- `stage.hontoWhenTouching(...)`, `stage.hontoWhileTouching(...)`
 - `actor.hontoAnimate().hontoMoveTo(...).hontoScaleTo(...).hontoPaintTo(...).hontoIn(...).hontoPingPong().hontoLoop().hontoPlay()`
 - `actor.hontoAnimateFrames().hontoTexture(...).hontoFrameSize(...).hontoFrames(...).hontoFPS(...).hontoLoop().hontoPlay()`
 - `stage.hontoEveryFrame(...)`, `stage.hontoWhenPressed(...)`, `stage.hontoFind("name")`
 - `stage.hontoPlayTone(...)`, `stage.hontoPlaySound(...)`, `stage.hontoPlayMusic(...)`, `stage.hontoPlayOnBus(...)`, `stage.hontoSetMasterVolume(...)`
 - `stage.hontoGoWithFade(...)`, `stage.hontoGoWindowWithFade(...)`, `stage.hontoFocusWindow(...)`, `honto::hontoFade(...)`
 - `stage.hontoWindowOpacity(...)`, `stage.hontoWindowBorderless(...)`, `stage.hontoWindowResizable(...)`, `stage.hontoWindowTopMost(...)`, `stage.hontoWindowSize(...)`, `stage.hontoWindowPosition(...)`, `stage.hontoWindowCenter()`
+- `stage.hontoCameraFollowSmooth(...)`, `stage.hontoCameraShake(...)`
 - `raycast.hontoDoor(...)`, `raycast.hontoDoorTexture(...)`, `raycast.hontoThingTexture(...)`, `raycast.hontoWeapon(...)`, `raycast.hontoWeaponBob(...)`, `raycast.hontoFog(...)`
 - `honto::hontoLoadLevel(...)`, `honto::hontoSaveLevel(...)`, `honto::hontoFindLevelEntity(...)`
 
@@ -304,6 +306,14 @@ The DOOM-style `RaycastView` also grew beyond plain walls:
 - a weapon overlay with bobbing and muzzle flash
 - a toggleable minimap with `Tab` or `M`
 
+There is also now a lightweight gameplay-and-tools layer for 2D projects:
+
+- particle emitters with burst or continuous emission
+- trigger zones with enter and while-overlap callbacks
+- simple patrol and chase helpers for enemies
+- smooth camera follow and camera shake
+- a sandbox level-editor window that paints tiles and exports level files
+
 If you prefer the more traditional engine style, the older scene-subclass API still works:
 
 ```cpp
@@ -340,8 +350,8 @@ private:
 ## Next milestones
 
 1. richer widgets such as sliders, checkboxes, text input, and draggable panels
-2. particle emitters, camera shake, and post-effect style helpers
-3. enemy AI, triggers, and pathfinding helpers for real gameplay loops
+2. post-effect style helpers and richer camera language
+3. deeper enemy AI and pathfinding helpers for real gameplay loops
 4. editor tooling, scene inspectors, and stronger project serialization
 5. content pipeline polish for sprite sheets, fonts, and packaged assets
 6. scripting layer, such as Lua or C# embedding

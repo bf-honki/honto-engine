@@ -784,6 +784,224 @@ namespace honto
         DrawText(renderer, m_Text, textPosition, glyphScale, m_TextColor, m_UseCamera);
     }
 
+    bool ParticleEmitter::Init()
+    {
+        std::random_device seed;
+        m_Rng.seed(seed());
+        ScheduleUpdate();
+        return true;
+    }
+
+    std::shared_ptr<ParticleEmitter> ParticleEmitter::Create(float width, float height)
+    {
+        auto emitter = std::make_shared<ParticleEmitter>();
+        if (emitter != nullptr && emitter->Init())
+        {
+            emitter->SetContentSize(width, height);
+            emitter->SetSpawnArea({ width, height });
+            return emitter;
+        }
+
+        return nullptr;
+    }
+
+    void ParticleEmitter::SetEmissionRate(float particlesPerSecond)
+    {
+        m_EmissionRate = std::max(0.0f, particlesPerSecond);
+    }
+
+    float ParticleEmitter::GetEmissionRate() const
+    {
+        return m_EmissionRate;
+    }
+
+    void ParticleEmitter::SetSpawnArea(const Vec2& size)
+    {
+        m_SpawnArea = { std::max(0.0f, size.x), std::max(0.0f, size.y) };
+    }
+
+    Vec2 ParticleEmitter::GetSpawnArea() const
+    {
+        return m_SpawnArea;
+    }
+
+    void ParticleEmitter::SetVelocityRange(const Vec2& minimum, const Vec2& maximum)
+    {
+        m_VelocityMin = minimum;
+        m_VelocityMax = maximum;
+    }
+
+    Vec2 ParticleEmitter::GetVelocityMin() const
+    {
+        return m_VelocityMin;
+    }
+
+    Vec2 ParticleEmitter::GetVelocityMax() const
+    {
+        return m_VelocityMax;
+    }
+
+    void ParticleEmitter::SetLifetimeRange(float minimumSeconds, float maximumSeconds)
+    {
+        m_LifetimeMin = std::max(0.01f, std::min(minimumSeconds, maximumSeconds));
+        m_LifetimeMax = std::max(m_LifetimeMin, std::max(minimumSeconds, maximumSeconds));
+    }
+
+    float ParticleEmitter::GetLifetimeMin() const
+    {
+        return m_LifetimeMin;
+    }
+
+    float ParticleEmitter::GetLifetimeMax() const
+    {
+        return m_LifetimeMax;
+    }
+
+    void ParticleEmitter::SetSizeRange(float minimumSize, float maximumSize)
+    {
+        m_SizeMin = std::max(1.0f, std::min(minimumSize, maximumSize));
+        m_SizeMax = std::max(m_SizeMin, std::max(minimumSize, maximumSize));
+    }
+
+    float ParticleEmitter::GetSizeMin() const
+    {
+        return m_SizeMin;
+    }
+
+    float ParticleEmitter::GetSizeMax() const
+    {
+        return m_SizeMax;
+    }
+
+    void ParticleEmitter::SetColorRange(Color start, Color finish)
+    {
+        m_StartColor = start;
+        m_FinishColor = finish;
+    }
+
+    Color ParticleEmitter::GetStartColor() const
+    {
+        return m_StartColor;
+    }
+
+    Color ParticleEmitter::GetFinishColor() const
+    {
+        return m_FinishColor;
+    }
+
+    void ParticleEmitter::SetUseCamera(bool useCamera)
+    {
+        m_UseCamera = useCamera;
+    }
+
+    bool ParticleEmitter::UsesCamera() const
+    {
+        return m_UseCamera;
+    }
+
+    void ParticleEmitter::Burst(int count)
+    {
+        const int safeCount = std::max(0, count);
+        for (int index = 0; index < safeCount; ++index)
+        {
+            SpawnParticle();
+        }
+    }
+
+    void ParticleEmitter::ClearParticles()
+    {
+        m_Particles.clear();
+    }
+
+    int ParticleEmitter::GetParticleCount() const
+    {
+        return static_cast<int>(m_Particles.size());
+    }
+
+    void ParticleEmitter::Update(float deltaTime)
+    {
+        if (m_EmissionRate > 0.0f)
+        {
+            m_EmissionCarry += m_EmissionRate * std::max(0.0f, deltaTime);
+            const int spawnCount = static_cast<int>(std::floor(m_EmissionCarry));
+            if (spawnCount > 0)
+            {
+                Burst(spawnCount);
+                m_EmissionCarry -= static_cast<float>(spawnCount);
+            }
+        }
+
+        for (Particle& particle : m_Particles)
+        {
+            particle.life -= deltaTime;
+            particle.position += particle.velocity * deltaTime;
+        }
+
+        m_Particles.erase(
+            std::remove_if(
+                m_Particles.begin(),
+                m_Particles.end(),
+                [](const Particle& particle)
+                {
+                    return particle.life <= 0.0f;
+                }
+            ),
+            m_Particles.end()
+        );
+    }
+
+    void ParticleEmitter::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
+    {
+        const auto blend = [](std::uint8_t from, std::uint8_t to, float t)
+        {
+            return static_cast<std::uint8_t>(static_cast<float>(from) + ((static_cast<float>(to) - static_cast<float>(from)) * t));
+        };
+
+        for (const Particle& particle : m_Particles)
+        {
+            const float lifeT = 1.0f - std::clamp(particle.life / std::max(0.01f, particle.maxLife), 0.0f, 1.0f);
+            const Color color {
+                blend(m_StartColor.r, m_FinishColor.r, lifeT),
+                blend(m_StartColor.g, m_FinishColor.g, lifeT),
+                blend(m_StartColor.b, m_FinishColor.b, lifeT),
+                blend(m_StartColor.a, m_FinishColor.a, lifeT)
+            };
+            const float size = particle.size * std::max(worldScale.x, worldScale.y);
+            renderer.DrawFilledRect(
+                {
+                    worldPosition.x + (particle.position.x * worldScale.x),
+                    worldPosition.y + (particle.position.y * worldScale.y)
+                },
+                { size, size },
+                color,
+                m_UseCamera
+            );
+        }
+    }
+
+    float ParticleEmitter::RandomFloat(float minimum, float maximum)
+    {
+        std::uniform_real_distribution<float> distribution(minimum, maximum);
+        return distribution(m_Rng);
+    }
+
+    void ParticleEmitter::SpawnParticle()
+    {
+        Particle particle;
+        particle.position = {
+            RandomFloat(0.0f, m_SpawnArea.x),
+            RandomFloat(0.0f, m_SpawnArea.y)
+        };
+        particle.velocity = {
+            RandomFloat(m_VelocityMin.x, m_VelocityMax.x),
+            RandomFloat(m_VelocityMin.y, m_VelocityMax.y)
+        };
+        particle.maxLife = RandomFloat(m_LifetimeMin, m_LifetimeMax);
+        particle.life = particle.maxLife;
+        particle.size = RandomFloat(m_SizeMin, m_SizeMax);
+        m_Particles.push_back(particle);
+    }
+
     void CodeScene::OnCreate()
     {
         Init();

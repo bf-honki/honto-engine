@@ -101,6 +101,47 @@ namespace honto
         m_TileStyles[tile] = style;
     }
 
+    char TileMap::GetCell(int column, int row) const
+    {
+        return TileAt(column, row);
+    }
+
+    void TileMap::SetCell(int column, int row, char tile)
+    {
+        if (row < 0 || row >= static_cast<int>(m_Map.size()))
+        {
+            return;
+        }
+
+        std::string& line = m_Map[static_cast<std::size_t>(row)];
+        if (column < 0 || column >= static_cast<int>(line.size()))
+        {
+            return;
+        }
+
+        line[static_cast<std::size_t>(column)] = tile;
+    }
+
+    bool TileMap::WorldToCell(const Vec2& point, int& column, int& row) const
+    {
+        const Vec2 localPoint = point - GetPosition();
+        column = static_cast<int>(std::floor(localPoint.x / m_TileSize.x));
+        row = static_cast<int>(std::floor(localPoint.y / m_TileSize.y));
+
+        if (row < 0 || row >= static_cast<int>(m_Map.size()))
+        {
+            return false;
+        }
+
+        const std::string& line = m_Map[static_cast<std::size_t>(row)];
+        if (column < 0 || column >= static_cast<int>(line.size()))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     bool TileMap::IsSolidAtCell(int column, int row) const
     {
         return GetStyle(TileAt(column, row)).solid;
