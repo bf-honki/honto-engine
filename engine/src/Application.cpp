@@ -51,6 +51,27 @@ namespace honto
         {
             Window::PumpMessages();
 
+            if (!m_PendingWindows.empty())
+            {
+                for (WindowStartup& startup : m_PendingWindows)
+                {
+                    WindowContext context;
+                    InitializeContext(
+                        context,
+                        startup.config,
+                        startup.createScene ? startup.createScene() : nullptr,
+                        startup.closeStopsGame
+                    );
+                    if (startup.focusWindow && context.window != nullptr)
+                    {
+                        context.window->Focus();
+                    }
+                    m_AdditionalContexts.push_back(std::move(context));
+                }
+
+                m_PendingWindows.clear();
+            }
+
             bool shouldExit = false;
             for (WindowContext& context : m_AdditionalContexts)
             {
@@ -65,8 +86,6 @@ namespace honto
             {
                 break;
             }
-
-            Input::Update();
 
             const auto currentTime = clock::now();
             float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
@@ -138,6 +157,72 @@ namespace honto
 
         context->window->Focus();
         return true;
+    }
+
+    bool Application::OpenWindow(WindowStartup startup, bool focusWindow)
+    {
+        startup.config = SanitizeConfig(std::move(startup.config));
+        startup.focusWindow = focusWindow;
+
+        if (WindowContext* existing = FindContext(startup.config.windowId))
+        {
+            if (startup.createScene)
+            {
+                RequestSceneChange(*existing, startup.createScene(), {});
+            }
+
+            if (focusWindow && existing->window != nullptr)
+            {
+                existing->window->Focus();
+            }
+
+            return true;
+        }
+
+        if (WindowContext* existing = FindContext(startup.config.title))
+        {
+            if (startup.createScene)
+            {
+                RequestSceneChange(*existing, startup.createScene(), {});
+            }
+
+            if (focusWindow && existing->window != nullptr)
+            {
+                existing->window->Focus();
+            }
+
+            return true;
+        }
+
+        m_PendingWindows.push_back(std::move(startup));
+        return true;
+    }
+
+    bool Application::CloseWindow(const std::string& windowIdOrTitle)
+    {
+        if (windowIdOrTitle.empty())
+        {
+            return false;
+        }
+
+        if (m_MainContext.window != nullptr &&
+            (m_MainContext.config.windowId == windowIdOrTitle || m_MainContext.config.title == windowIdOrTitle))
+        {
+            m_MainContext.window->Close();
+            return true;
+        }
+
+        for (WindowContext& context : m_AdditionalContexts)
+        {
+            if (context.window != nullptr &&
+                (context.config.windowId == windowIdOrTitle || context.config.title == windowIdOrTitle))
+            {
+                context.window->Close();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     Window* Application::FindWindow(const std::string& windowIdOrTitle)
@@ -280,13 +365,13 @@ namespace honto
 
     void Application::UpdateContext(WindowContext& context, float deltaTime)
     {
-        if (context.window == nullptr || !context.window->IsOpen())
+        if (context.window == nullptr || !context.window->IsOpen() || !context.window->IsVisible())
         {
             return;
         }
 
         m_CurrentContext = &context;
-        Input::SetMouseContext(*context.window, context.config.renderWidth, context.config.renderHeight);
+        Input::UpdateForWindow(*context.window, context.config.renderWidth, context.config.renderHeight);
         if (context.scene != nullptr)
         {
             context.scene->OnUpdate(deltaTime);
@@ -323,7 +408,7 @@ namespace honto
 
     void Application::RenderContext(WindowContext& context)
     {
-        if (context.window == nullptr || !context.window->IsOpen())
+        if (context.window == nullptr || !context.window->IsOpen() || !context.window->IsVisible())
         {
             return;
         }

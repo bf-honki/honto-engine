@@ -10,6 +10,10 @@
 
 #include <Windows.h>
 
+#ifdef DrawText
+#undef DrawText
+#endif
+
 #include "Math.h"
 
 #include <cstdint>
@@ -50,7 +54,10 @@ namespace honto
         void SetClientSize(int width, int height);
         void SetPosition(int x, int y);
         void Center();
+        void Hide();
         void Focus();
+        bool HasFocus() const;
+        void Close();
 
         bool IsOpen() const
         {
@@ -65,6 +72,11 @@ namespace honto
         int ClientHeight() const
         {
             return m_ClientHeight;
+        }
+
+        bool IsVisible() const
+        {
+            return m_IsVisible;
         }
 
     private:
@@ -84,6 +96,7 @@ namespace honto
         bool m_Resizable = true;
         bool m_Borderless = false;
         bool m_AlwaysOnTop = false;
+        bool m_IsVisible = true;
         float m_Opacity = 1.0f;
         BITMAPINFO m_BitmapInfo {};
     };

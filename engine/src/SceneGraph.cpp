@@ -3,151 +3,9 @@
 #include "honto/Application.h"
 
 #include <algorithm>
-#include <array>
-#include <cctype>
 #include <cmath>
 #include <string>
 #include <utility>
-
-namespace
-{
-    using GlyphRows = std::array<std::uint8_t, 7>;
-
-    GlyphRows GlyphFor(char character)
-    {
-        switch (static_cast<char>(std::toupper(static_cast<unsigned char>(character))))
-        {
-        case 'A': return { 0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11 };
-        case 'B': return { 0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E };
-        case 'C': return { 0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E };
-        case 'D': return { 0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E };
-        case 'E': return { 0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F };
-        case 'F': return { 0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10 };
-        case 'G': return { 0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F };
-        case 'H': return { 0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11 };
-        case 'I': return { 0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E };
-        case 'J': return { 0x01, 0x01, 0x01, 0x01, 0x11, 0x11, 0x0E };
-        case 'K': return { 0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11 };
-        case 'L': return { 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F };
-        case 'M': return { 0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11 };
-        case 'N': return { 0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11 };
-        case 'O': return { 0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E };
-        case 'P': return { 0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10 };
-        case 'Q': return { 0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D };
-        case 'R': return { 0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11 };
-        case 'S': return { 0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E };
-        case 'T': return { 0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04 };
-        case 'U': return { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E };
-        case 'V': return { 0x11, 0x11, 0x11, 0x11, 0x0A, 0x0A, 0x04 };
-        case 'W': return { 0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A };
-        case 'X': return { 0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11 };
-        case 'Y': return { 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04 };
-        case 'Z': return { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F };
-        case '0': return { 0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E };
-        case '1': return { 0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E };
-        case '2': return { 0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F };
-        case '3': return { 0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E };
-        case '4': return { 0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02 };
-        case '5': return { 0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E };
-        case '6': return { 0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E };
-        case '7': return { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08 };
-        case '8': return { 0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E };
-        case '9': return { 0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C };
-        case ':': return { 0x00, 0x04, 0x04, 0x00, 0x04, 0x04, 0x00 };
-        case '.': return { 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x06 };
-        case '-': return { 0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00 };
-        case '/': return { 0x01, 0x02, 0x02, 0x04, 0x08, 0x08, 0x10 };
-        case '!': return { 0x04, 0x04, 0x04, 0x04, 0x04, 0x00, 0x04 };
-        case ' ': return { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        default: return { 0x1F, 0x11, 0x05, 0x0A, 0x04, 0x00, 0x04 };
-        }
-    }
-
-    void DrawGlyph(
-        honto::Renderer2D& renderer,
-        const GlyphRows& rows,
-        const honto::Vec2& position,
-        int glyphScale,
-        honto::Color color,
-        bool useCamera
-    )
-    {
-        for (std::size_t row = 0; row < rows.size(); ++row)
-        {
-            for (int column = 0; column < 5; ++column)
-            {
-                if ((rows[row] & (1 << (4 - column))) == 0)
-                {
-                    continue;
-                }
-
-                renderer.DrawFilledRect(
-                    {
-                        position.x + static_cast<float>(column * glyphScale),
-                        position.y + static_cast<float>(row * glyphScale)
-                    },
-                    { static_cast<float>(glyphScale), static_cast<float>(glyphScale) },
-                    color,
-                    useCamera
-                );
-            }
-        }
-    }
-
-    honto::Vec2 MeasureTextBounds(const std::string& text, int glyphScale)
-    {
-        const int safeScale = std::max(1, glyphScale);
-        std::size_t maxColumns = 0;
-        std::size_t currentColumns = 0;
-        std::size_t lineCount = 1;
-
-        for (char character : text)
-        {
-            if (character == '\n')
-            {
-                maxColumns = std::max(maxColumns, currentColumns);
-                currentColumns = 0;
-                ++lineCount;
-                continue;
-            }
-
-            ++currentColumns;
-        }
-
-        maxColumns = std::max(maxColumns, currentColumns);
-        const float width = maxColumns == 0 ? 0.0f : static_cast<float>(((maxColumns * 6) - 1) * static_cast<std::size_t>(safeScale));
-        const float height = lineCount == 0 ? 0.0f : static_cast<float>(((lineCount * 8) - 1) * static_cast<std::size_t>(safeScale));
-        return { width, height };
-    }
-
-    void DrawText(
-        honto::Renderer2D& renderer,
-        const std::string& text,
-        const honto::Vec2& position,
-        int glyphScale,
-        honto::Color color,
-        bool useCamera
-    )
-    {
-        float cursorX = position.x;
-        float cursorY = position.y;
-        const float lineAdvance = static_cast<float>(glyphScale * 8);
-        const float columnAdvance = static_cast<float>(glyphScale * 6);
-
-        for (char character : text)
-        {
-            if (character == '\n')
-            {
-                cursorX = position.x;
-                cursorY += lineAdvance;
-                continue;
-            }
-
-            DrawGlyph(renderer, GlyphFor(character), { cursorX, cursorY }, glyphScale, color, useCamera);
-            cursorX += columnAdvance;
-        }
-    }
-}
 
 namespace honto
 {
@@ -545,13 +403,13 @@ namespace honto
 
     void Label::Draw(Renderer2D& renderer, const Vec2& worldPosition, const Vec2& worldScale)
     {
-        const int glyphScale = std::max(1, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x)));
-        DrawText(renderer, m_Text, worldPosition, glyphScale, m_Color, m_UseCamera);
+        const int pixelHeight = std::max(10, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x * 10.0f)));
+        renderer.DrawText(m_Text, worldPosition, pixelHeight, m_Color, m_UseCamera);
     }
 
     void Label::RefreshContentSize()
     {
-        SetContentSize(MeasureTextBounds(m_Text, m_GlyphScale));
+        SetContentSize(Renderer2D {}.MeasureText(m_Text, std::max(10, m_GlyphScale * 10)));
     }
 
     bool ProgressBar::Init()
@@ -775,13 +633,13 @@ namespace honto
         renderer.DrawFilledRect(worldPosition, size, background, m_UseCamera);
         renderer.DrawRectOutline(worldPosition, size, m_BorderColor, std::max(1, static_cast<int>(std::round(worldScale.x))), m_UseCamera);
 
-        const int glyphScale = std::max(1, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x)));
-        const Vec2 textSize = MeasureTextBounds(m_Text, glyphScale);
+        const int pixelHeight = std::max(10, static_cast<int>(std::round(static_cast<float>(m_GlyphScale) * worldScale.x * 10.0f)));
+        const Vec2 textSize = renderer.MeasureText(m_Text, pixelHeight);
         const Vec2 textPosition {
             worldPosition.x + std::max(0.0f, (size.x - textSize.x) * 0.5f),
             worldPosition.y + std::max(0.0f, (size.y - textSize.y) * 0.5f)
         };
-        DrawText(renderer, m_Text, textPosition, glyphScale, m_TextColor, m_UseCamera);
+        renderer.DrawText(m_Text, textPosition, pixelHeight, m_TextColor, m_UseCamera);
     }
 
     bool ParticleEmitter::Init()
@@ -827,8 +685,14 @@ namespace honto
 
     void ParticleEmitter::SetVelocityRange(const Vec2& minimum, const Vec2& maximum)
     {
-        m_VelocityMin = minimum;
-        m_VelocityMax = maximum;
+        m_VelocityMin = {
+            std::min(minimum.x, maximum.x),
+            std::min(minimum.y, maximum.y)
+        };
+        m_VelocityMax = {
+            std::max(minimum.x, maximum.x),
+            std::max(minimum.y, maximum.y)
+        };
     }
 
     Vec2 ParticleEmitter::GetVelocityMin() const
@@ -981,7 +845,9 @@ namespace honto
 
     float ParticleEmitter::RandomFloat(float minimum, float maximum)
     {
-        std::uniform_real_distribution<float> distribution(minimum, maximum);
+        const float safeMinimum = std::min(minimum, maximum);
+        const float safeMaximum = std::max(minimum, maximum);
+        std::uniform_real_distribution<float> distribution(safeMinimum, safeMaximum);
         return distribution(m_Rng);
     }
 
@@ -1088,6 +954,16 @@ namespace honto
     bool Director::FocusWindow(const std::string& windowIdOrTitle) const
     {
         return m_Application != nullptr && m_Application->FocusWindow(windowIdOrTitle);
+    }
+
+    bool Director::OpenWindow(WindowStartup startup, bool focusWindow)
+    {
+        return m_Application != nullptr && m_Application->OpenWindow(std::move(startup), focusWindow);
+    }
+
+    bool Director::CloseWindow(const std::string& windowIdOrTitle) const
+    {
+        return m_Application != nullptr && m_Application->CloseWindow(windowIdOrTitle);
     }
 
     void Director::AttachApplication(Application* application)

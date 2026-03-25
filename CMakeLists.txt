@@ -81,7 +81,7 @@ target_link_libraries(honto_engine PUBLIC
 )
 
 if(MSVC)
-    target_compile_options(honto_engine PRIVATE /W4 /permissive-)
+    target_compile_options(honto_engine PRIVATE /W4 /permissive- /utf-8)
 else()
     target_compile_options(honto_engine PRIVATE -Wall -Wextra -Wpedantic)
 endif()
@@ -92,7 +92,7 @@ set_target_properties(honto_engine PROPERTIES
 )
 
 if(HONTO_BUILD_SANDBOX)
-    add_executable(honto_sandbox ${HONTO_SANDBOX_SOURCES})
+    add_executable(honto_sandbox WIN32 ${HONTO_SANDBOX_SOURCES})
     target_link_libraries(honto_sandbox PRIVATE honto_engine)
     set_target_properties(honto_sandbox PROPERTIES
         FOLDER "Apps"

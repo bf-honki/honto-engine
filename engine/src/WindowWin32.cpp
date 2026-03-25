@@ -48,6 +48,7 @@ namespace honto
         ApplyStyle();
         ShowWindow(m_Handle, SW_SHOW);
         UpdateWindow(m_Handle);
+        m_IsVisible = true;
     }
 
     Window::~Window()
@@ -106,10 +107,33 @@ namespace honto
         m_BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
         HDC deviceContext = GetDC(m_Handle);
-        FillRect(deviceContext, &clientRect, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+        if (deviceContext == nullptr)
+        {
+            return;
+        }
+
+        HDC backBufferContext = CreateCompatibleDC(deviceContext);
+        HBITMAP backBufferBitmap = CreateCompatibleBitmap(deviceContext, clientWidth, clientHeight);
+        if (backBufferContext == nullptr || backBufferBitmap == nullptr)
+        {
+            if (backBufferBitmap != nullptr)
+            {
+                DeleteObject(backBufferBitmap);
+            }
+            if (backBufferContext != nullptr)
+            {
+                DeleteDC(backBufferContext);
+            }
+            ReleaseDC(m_Handle, deviceContext);
+            return;
+        }
+
+        HGDIOBJ previousBitmap = SelectObject(backBufferContext, backBufferBitmap);
+        FillRect(backBufferContext, &clientRect, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+        SetStretchBltMode(backBufferContext, COLORONCOLOR);
 
         StretchDIBits(
-            deviceContext,
+            backBufferContext,
             offsetX,
             offsetY,
             destinationWidth,
@@ -124,6 +148,11 @@ namespace honto
             SRCCOPY
         );
 
+        BitBlt(deviceContext, 0, 0, clientWidth, clientHeight, backBufferContext, 0, 0, SRCCOPY);
+
+        SelectObject(backBufferContext, previousBitmap);
+        DeleteObject(backBufferBitmap);
+        DeleteDC(backBufferContext);
         ReleaseDC(m_Handle, deviceContext);
     }
 
@@ -243,6 +272,18 @@ namespace honto
         SetPosition(x, y);
     }
 
+    void Window::Hide()
+    {
+        if (m_Handle == nullptr)
+        {
+            m_IsVisible = false;
+            return;
+        }
+
+        ShowWindow(m_Handle, SW_HIDE);
+        m_IsVisible = false;
+    }
+
     void Window::Focus()
     {
         if (m_Handle == nullptr)
@@ -251,8 +292,29 @@ namespace honto
         }
 
         ShowWindow(m_Handle, SW_SHOW);
+        m_IsVisible = true;
         SetForegroundWindow(m_Handle);
         SetFocus(m_Handle);
+    }
+
+    bool Window::HasFocus() const
+    {
+        return m_Handle != nullptr && GetForegroundWindow() == m_Handle;
+    }
+
+    void Window::Close()
+    {
+        if (m_Handle == nullptr)
+        {
+            m_IsOpen = false;
+            m_IsVisible = false;
+            return;
+        }
+
+        m_IsOpen = false;
+        m_IsVisible = false;
+        DestroyWindow(m_Handle);
+        m_Handle = nullptr;
     }
 
     bool Window::GetMouseRenderPosition(int sourceWidth, int sourceHeight, Vec2& outPosition) const
@@ -331,6 +393,7 @@ namespace honto
 
             case WM_DESTROY:
                 window->m_IsOpen = false;
+                window->m_IsVisible = false;
                 window->m_Handle = nullptr;
                 return 0;
 
@@ -338,6 +401,21 @@ namespace honto
                 window->m_ClientWidth = LOWORD(lParam);
                 window->m_ClientHeight = HIWORD(lParam);
                 return 0;
+
+            case WM_SHOWWINDOW:
+                window->m_IsVisible = wParam != FALSE;
+                return 0;
+
+            case WM_ERASEBKGND:
+                return 1;
+
+            case WM_PAINT:
+            {
+                PAINTSTRUCT paint {};
+                BeginPaint(hwnd, &paint);
+                EndPaint(hwnd, &paint);
+                return 0;
+            }
 
             default:
                 break;
@@ -357,11 +435,11 @@ namespace honto
 
         WNDCLASSEXA windowClass {};
         windowClass.cbSize = sizeof(WNDCLASSEXA);
-        windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+        windowClass.style = CS_OWNDC;
         windowClass.lpfnWndProc = &Window::WindowProc;
         windowClass.hInstance = m_Instance;
         windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
-        windowClass.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
+        windowClass.hbrBackground = nullptr;
         windowClass.lpszClassName = kWindowClassName;
 
         if (RegisterClassExA(&windowClass) == 0)

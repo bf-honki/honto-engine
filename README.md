@@ -4,7 +4,8 @@
 
 Detailed Korean guide: `docs/HONTO_ENGINE_GUIDE_KO.md`
 Source structure guide: `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
-Academy lesson guide: `docs/HONTO_ACADEMY_GUIDE_KO.md`
+Sample Code Lab guide: `docs/HONTO_ACADEMY_GUIDE_KO.md`
+Step-by-step SDK quickstart guide: `docs/HONTO_GETTING_STARTED_KO.md`
 
 This version now covers the core runtime features most people expect when prototyping a 2D engine:
 
@@ -15,7 +16,7 @@ This version now covers the core runtime features most people expect when protot
 - a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI/buttons, mouse input, audio buses, level files, scene transitions, multiverse-style window travel, runtime window styling, particles, triggers, simple AI, and camera shake
 - keyboard and mouse input
 - level loading from `.honto`, HonTo JSON, and Tiled-style JSON
-- a sandbox sample game called `honto Engine Academy` where players move through lesson gates and learn scene setup, input, physics, animation, camera, UI, save/load, and DOOM-style 2.5D level by level
+- a sandbox sample built as `honto Playground` plus `honto Code Lab`, where users click code samples to run stage, physics, animation, camera, UI, save/load, DOOM-style 2.5D, and runtime-window demos
 - installable CMake package support so other developers can use the engine on a different machine with `find_package(HonToEngine CONFIG REQUIRED)`
 - a reusable starter template and standalone quickstart example for external game projects
 
@@ -93,6 +94,10 @@ You can generate a fresh external project from the starter template:
 
 This creates a new buildable game project under `C:\Games\MyGame`.
 
+For a full step-by-step workflow from download to writing `main.cpp`, read:
+
+- `docs/HONTO_GETTING_STARTED_KO.md`
+
 ## Visual Studio
 
 If you generate the project with a recent Visual Studio generator, CMake may create a `.slnx` file instead of the older `.sln` format.
@@ -145,19 +150,35 @@ To remove the local development certificate again:
 - `templates/HonToStarter`: starter project for external users
 - `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`: separate source explanation file
 
-## Sample Academy
+## Sample Code Lab
 
-The main sample is now a playable tutorial flow called `honto Engine Academy`.
+The main sample now opens two windows:
 
-- `Level 1`: stage, actor, and movement basics
-- `Level 2`: gravity, jumping, and tile collisions
-- `Level 3`: frame animation and particle bursts
-- `Level 4`: camera follow, triggers, and simple AI
-- `Level 5`: buttons, bars, mouse input, and audio
-- `Level 6`: runtime tile editing plus level save/load
-- `Level 7`: DOOM-style 2.5D raycasting from a 2D map
+- `honto Playground`: the live demo view on the left, configured at `1620x1080`
+- `honto Code Lab`: the explanation and code-click window on the right, configured at `960x720`
 
-The Korean lesson-by-lesson walkthrough lives in `docs/HONTO_ACADEMY_GUIDE_KO.md`.
+Click a code sample in `honto Code Lab` and the matching demo runs in `honto Playground`.
+
+The sample covers:
+
+- `honto::hontoGame(...)`: bootstrapping the app and sample windows
+- `stage.hontoGoWithFade(...)`: scene replacement and transitions
+- `stage.hontoText(...)`: labels, titles, and status text
+- `stage.hontoImage(...)`: sprites, PNG textures, and generated textures
+- `stage.hontoBox(...)`: actor creation and keyboard input
+- `stage.hontoGravity(...)`: gravity, jumping, and tile collision
+- `actor.hontoAnimateFrames()`: sprite-sheet frame animation
+- `stage.hontoParticles(...)`: particle bursts
+- `stage.hontoCamera(...)`: camera follow, triggers, and AI
+- `stage.hontoButton(...)`: buttons, bars, and mouse-driven UI
+- `stage.hontoPlayMusic(...)`: music, effects, tones, and bus mixing
+- `honto::hontoSaveLevel(...)`: runtime editing and save/load
+- `stage.hontoRaycast(...)`: DOOM-style 2.5D raycasting
+- `stage.hontoOpenWindow(...)`: spawning a blank runtime window from code
+
+Press `Esc` in either sample window to open settings, switch between English and Korean, or exit the sample.
+
+The Korean walkthrough lives in `docs/HONTO_ACADEMY_GUIDE_KO.md`.
 
 ## Easy code-first API
 

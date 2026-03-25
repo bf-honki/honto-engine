@@ -4,6 +4,7 @@
 #include "Math.h"
 
 #include <cstdint>
+#include <string>
 
 namespace honto
 {
@@ -37,6 +38,14 @@ namespace honto
             const Texture& texture,
             float u,
             Color tint = { 255, 255, 255, 255 },
+            bool useCamera = false
+        );
+        Vec2 MeasureText(const std::string& text, int pixelHeight) const;
+        void DrawText(
+            const std::string& text,
+            const Vec2& position,
+            int pixelHeight,
+            Color color = { 255, 255, 255, 255 },
             bool useCamera = false
         );
 

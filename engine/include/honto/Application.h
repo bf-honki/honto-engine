@@ -45,6 +45,7 @@ namespace honto
     {
         AppConfig config {};
         bool closeStopsGame = false;
+        bool focusWindow = false;
         std::function<std::unique_ptr<Scene>()> createScene;
     };
 
@@ -87,6 +88,8 @@ namespace honto
 
         bool SetSceneForWindow(const std::string& windowIdOrTitle, std::unique_ptr<Scene> scene, const SceneTransition& transition = {}, bool focusWindow = false);
         bool FocusWindow(const std::string& windowIdOrTitle);
+        bool OpenWindow(WindowStartup startup, bool focusWindow = true);
+        bool CloseWindow(const std::string& windowIdOrTitle);
         Window* FindWindow(const std::string& windowIdOrTitle);
         const Window* FindWindow(const std::string& windowIdOrTitle) const;
 
@@ -124,6 +127,7 @@ namespace honto
 
         WindowContext m_MainContext;
         std::vector<WindowContext> m_AdditionalContexts;
+        std::vector<WindowStartup> m_PendingWindows;
         WindowContext* m_CurrentContext = nullptr;
     };
 }

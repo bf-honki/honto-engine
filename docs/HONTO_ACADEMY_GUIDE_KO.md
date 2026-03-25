@@ -1,218 +1,260 @@
-# honto Engine Academy Guide
+# honto Code Lab Guide
 
 ## 개요
 
-`honto Engine Academy`는 샘플게임 자체를 튜토리얼처럼 구성한 예제입니다.
+현재 샘플게임은 두 개의 창으로 이루어집니다.
 
-허브에서 레벨 게이트를 왼쪽에서 오른쪽 순서로 열어가며, 다른 게임 엔진들에서도 거의 항상 다루는 핵심 코드 흐름을 직접 플레이하면서 배우게 됩니다.
+- `honto Playground`
+왼쪽 실행 창입니다. 기본 목표 크기는 `1620x1080`입니다.
 
-메인 샘플 구현은 `sandbox/src/main.cpp`에 있고, 코드 내부 주석 대신 이 문서와 `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`에서 구조를 설명합니다.
+- `honto Code Lab`
+오른쪽 코드 선택 창입니다. 기본 목표 크기는 `960x720`입니다.
 
-## 진행 방식
+`Code Lab`에서 코드를 마우스로 누르면 `Playground`가 그 코드에 맞는 데모로 즉시 바뀝니다. `stage.hontoOpenWindow(...)` 항목은 실제로 빈 `honto Runtime Window`를 띄웁니다.
 
-- 허브에서 `A/D` 또는 방향키로 이동
-- `Space`로 점프
-- 게이트에 닿은 상태에서 `Enter`로 레벨 진입
-- 각 레벨에서 목표를 달성하면 허브로 돌아오며 다음 레벨이 열림
-- 대부분의 레벨은 `Esc`로 허브 복귀 가능
+## 공통 조작
 
-## 레벨 1
+- 마우스 클릭: `Code Lab` 코드 선택 또는 데모 버튼 실행
+- `Esc`: 설정창 열기
+- 설정창 `English`: 영어 UI
+- 설정창 `한국어`: 한국어 UI
+- 설정창 `게임 나가기`: 샘플 종료
 
-### STAGE AND ACTOR
+## Code Lab 목록
 
-배우는 것:
+### 1. `honto::hontoGame(...)`
 
-- `stage.hontoBox(...)`
-- `actor.hontoAt(...)`
-- `actor.hontoMoveWithArrows(...)`
-- `actor.hontoTouching(...)`
+기능:
 
-대표 코드:
+- 게임 시작
+- 메인 창 생성
+- 코드 창 생성
+
+예시:
 
 ```cpp
-auto player = stage.hontoBox("player", 16.0f, 16.0f, honto::hontoRGBA(114, 236, 148))
-    .hontoAt(16.0f, 118.0f)
-    .hontoMoveWithArrows(124.0f)
-    .hontoKeepInside(10.0f, 74.0f, 294.0f, 132.0f);
+return honto::hontoGame("honto Playground")
+    .hontoWindow(1320, 1080)
+    .hontoPlay(BuildPlaygroundScene)
+    .hontoOpenWindow(...)
+    .hontoRun();
 ```
 
-플레이 목표:
+### 2. `stage.hontoGoWithFade(...)`
 
-- 세 개의 목표 오브젝트를 주워서 출구 포털 열기
+기능:
 
-## 레벨 2
+- 씬 교체
+- 페이드 전환
 
-### PHYSICS AND TILEMAP
-
-배우는 것:
-
-- `stage.hontoGravity(...)`
-- `stage.hontoTileMap(...)`
-- `player.hontoUseGravity()`
-- `player.hontoCollideWithMap(world)`
-- `player.hontoJumpWhenPressed(...)`
-
-대표 코드:
+예시:
 
 ```cpp
-stage.hontoGravity(0.0f, 760.0f);
+gSceneFlip = 1 - gSceneFlip;
+stage.hontoGoWithFade(BuildPlaygroundScene, 0.25f);
+```
 
-auto world = stage.hontoTileMap("world", map, 16.0f, 16.0f);
-world.hontoTile('#', honto::hontoRGBA(142, 110, 82), true, true);
+### 3. `stage.hontoText(...)`
 
+기능:
+
+- 라벨
+- 제목
+- 상태 문구
+
+예시:
+
+```cpp
+stage.hontoText("title", "HONTO LABEL", honto::hontoRGBA(238, 245, 255), 1)
+    .hontoAt(24, 74)
+    .hontoLayer(4);
+```
+
+### 4. `stage.hontoImage(...)`
+
+기능:
+
+- PNG 스프라이트
+- 생성 텍스처
+- 이미지 렌더링
+
+예시:
+
+```cpp
+stage.hontoImage("badge", "sandbox/assets/honto_badge.png", 48, 48)
+    .hontoAt(42, 82)
+    .hontoLayer(4);
+```
+
+### 5. `stage.hontoBox(...)`
+
+기능:
+
+- 액터 생성
+- 위치 지정
+- 이동 입력
+
+예시:
+
+```cpp
+auto player = stage.hontoBox("player", 16, 16, honto::hontoRGBA(114, 236, 148))
+    .hontoAt(18, 110)
+    .hontoMoveWithArrows(124);
+```
+
+### 6. `stage.hontoGravity(...)`
+
+기능:
+
+- 중력
+- 점프
+- 타일 충돌
+
+예시:
+
+```cpp
+stage.hontoGravity(0, 760);
+auto world = stage.hontoTileMap("world", map, 16, 16);
 player.hontoUseGravity()
-    .hontoCollideWithMap(world)
-    .hontoJumpWhenPressed(honto::hontoKey::Space, 290.0f);
+    .hontoCollideWithMap(world);
 ```
 
-플레이 목표:
+### 7. `actor.hontoAnimateFrames()`
 
-- 발판을 점프로 올라가서 출구 비콘에 닿기
+기능:
 
-## 레벨 3
+- 프레임 애니메이션
+- 스프라이트시트 재생
 
-### ANIMATION AND PARTICLES
-
-배우는 것:
-
-- `honto::hontoFrameSheetTexture(...)`
-- `actor.hontoAnimateFrames()`
-- `stage.hontoParticles(...)`
-- `fx.hontoBurst(...)`
-
-대표 코드:
+예시:
 
 ```cpp
 player.hontoAnimateFrames()
-    .hontoTexture(sheet)
     .hontoFrameSize(16, 16)
-    .hontoFrames({ 0, 1, 2, 3, 2, 1 })
-    .hontoFPS(10.0f)
+    .hontoFrames({0, 1, 2, 3})
     .hontoLoop()
     .hontoPlay();
+```
 
+### 8. `stage.hontoParticles(...)`
+
+기능:
+
+- 파티클 이미터
+- 버스트 발생
+
+예시:
+
+```cpp
+auto burst = stage.hontoParticles("burst", 18, 18);
+burst.hontoVelocityRange({-26, -24}, {26, -86});
 burst.hontoBurst(18);
 ```
 
-플레이 목표:
+### 9. `stage.hontoCamera(...)`
 
-- 애니메이션이 적용된 캐릭터로 세 개의 크리스털을 활성화하고 FX 포털 열기
+기능:
 
-## 레벨 4
+- 카메라 따라가기
+- 트리거
+- 순찰/추적 AI
 
-### CAMERA, TRIGGER, AI
-
-배우는 것:
-
-- `stage.hontoCameraFollowSmooth(...)`
-- `stage.hontoTrigger(...)`
-- `enemy.hontoPatrolX(...)`
-- `enemy.hontoChaseX(...)`
-- `stage.hontoCameraShake(...)`
-
-대표 코드:
+예시:
 
 ```cpp
 stage.hontoCameraFollowSmooth(player, 1.0f, 8.0f);
-
-auto hunter = stage.hontoBox("hunter", 16.0f, 16.0f, honto::hontoRGBA(214, 86, 102))
-    .hontoUseGravity()
-    .hontoCollideWithMap(world)
-    .hontoChaseX(player, 56.0f, 18.0f);
+auto enemy = stage.hontoBox("enemy", 16, 16, color)
+    .hontoPatrolX(172, 244, 44);
 ```
 
-플레이 목표:
+### 10. `stage.hontoButton(...)`
 
-- 카메라가 따라오는 긴 맵에서 적을 피하고 스위치 트리거에 닿기
+기능:
 
-## 레벨 5
+- 버튼 UI
+- 진행 바
+- 마우스 클릭 반응
 
-### UI, BUTTON, AUDIO
-
-배우는 것:
-
-- `stage.hontoButton(...)`
-- `stage.hontoWhenClicked(...)`
-- `stage.hontoBar(...)`
-- `stage.hontoPlayMusic(...)`
-- `stage.hontoPlayOnBus(...)`
-- `stage.hontoMousePosition()`
-
-대표 코드:
+예시:
 
 ```cpp
-auto musicButton = stage.hontoButton("music", "PLAY MUSIC", 84.0f, 16.0f);
-
-stage.hontoWhenClicked(musicButton, [stage]()
-{
-    stage.hontoPlayMusic("sandbox/assets/honto_theme.wav");
-});
+auto play = stage.hontoButton("music", "PLAY", 84, 16);
+auto bar = stage.hontoBar("level", 96, 8, 0.0f, color, bg, border);
 ```
 
-플레이 목표:
+### 11. `stage.hontoPlayMusic(...)`
 
-- 세 개의 콘솔 시스템을 클릭으로 켜고, 모든 게이지를 채운 뒤 허브 버튼 해금하기
+기능:
 
-## 레벨 6
+- 배경음
+- 효과음
+- 톤 재생
+- 오디오 버스
 
-### LEVEL, SAVE, LOAD
-
-배우는 것:
-
-- `honto::hontoLevel`
-- `world.hontoCell(...)`
-- `honto::hontoSaveLevel(...)`
-- `honto::hontoLoadLevel(...)`
-
-대표 코드:
+예시:
 
 ```cpp
-editor.hontoCell(column, 0, '#');
-world.hontoCell(8 + column, 4, '#');
-level.map[4][8 + column] = '#';
-
-honto::hontoSaveLevel("sandbox/levels/academy_bridge.json", level);
+stage.hontoSetBusVolume("music", 0.72f);
+stage.hontoPlayMusic("sandbox/assets/honto_theme.wav");
+stage.hontoPlayOnBus("effect", "sandbox/assets/honto_click.wav");
 ```
 
-플레이 목표:
+### 12. `honto::hontoSaveLevel(...)`
 
-- 에디터 셀 세 칸을 눌러 다리를 만들고, 필요하면 저장/불러오기를 써서 출구까지 건너가기
+기능:
 
-## 레벨 7
+- 런타임 타일 수정
+- 저장
+- 불러오기
 
-### 2.5D RAYCAST
-
-배우는 것:
-
-- `stage.hontoRaycast(...)`
-- `doom.hontoMap(...)`
-- `doom.hontoDoor(...)`
-- `doom.hontoDoomControls()`
-- `doom.hontoPlayerPosition()`
-
-대표 코드:
+예시:
 
 ```cpp
-auto doom = stage.hontoRaycast("lesson7_doom", 320.0f, 112.0f);
+editor.hontoCell(1, 0, '#');
+world.hontoCell(9, 4, '#');
+honto::hontoSaveLevel("sandbox/levels/bridge_demo.json", level);
+```
 
-doom.hontoMap(map)
+### 13. `stage.hontoRaycast(...)`
+
+기능:
+
+- 둠식 2.5D
+- 문
+- 무기 오버레이
+
+예시:
+
+```cpp
+auto doom = stage.hontoRaycast("view", 320, 112);
+doom.hontoMap(kRaycastMap)
     .hontoPlayer(1.5f, 1.5f, 0.0f)
-    .hontoDoor('D', honto::hontoRGBA(206, 168, 102), 0.65f, 2.0f)
+    .hontoDoor('D', color, 0.65f, 2.0f)
     .hontoDoomControls();
 ```
 
-플레이 목표:
+### 14. `stage.hontoOpenWindow(...)`
 
-- `E`로 문을 열고, 2.5D 미로 끝의 출구 지점까지 이동하기
+기능:
 
-## 어떤 순서로 읽으면 좋은가
+- 런타임 창 생성
+- 코드 클릭으로 새 창 띄우기
 
-1. `LEVEL 1`과 `LEVEL 2`로 액터와 물리 기본기 익히기
-2. `LEVEL 3`과 `LEVEL 4`로 게임다운 표현과 레벨 로직 익히기
-3. `LEVEL 5`와 `LEVEL 6`으로 툴, UI, 데이터 흐름 익히기
-4. `LEVEL 7`로 2D 기반 2.5D 확장 보기
+예시:
 
-## 관련 문서
+```cpp
+stage.hontoOpenWindow(
+    "honto Runtime Window",
+    720, 420, 320, 180,
+    BuildRuntimeWindowScene,
+    honto::hontoRGBA(12, 16, 24),
+    false, true);
+```
 
-- `docs/HONTO_ENGINE_GUIDE_KO.md`
-- `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
+## 확인 포인트
+
+- 코드 목록이 `Game`, `Scene`, `Label`, `Sprite`까지 포함해서 넓어졌는지
+- `Code Lab`이 오른쪽, `Playground`가 왼쪽에 배치되는지
+- 클릭한 코드가 즉시 데모로 실행되는지
+- `stage.hontoOpenWindow(...)` 클릭 시 빈 창이 뜨는지
+- `Esc` 설정창에서 영어/한국어 전환과 종료가 되는지

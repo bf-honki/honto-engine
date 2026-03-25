@@ -12,6 +12,8 @@
 
 #include "Math.h"
 
+#include <unordered_map>
+
 namespace honto
 {
     enum class KeyCode : int
@@ -53,6 +55,7 @@ namespace honto
     public:
         static void Update();
         static void SetMouseContext(const Window& window, int renderWidth, int renderHeight);
+        static void UpdateForWindow(const Window& window, int renderWidth, int renderHeight);
         static bool IsKeyDown(KeyCode key);
         static bool IsKeyPressed(KeyCode key);
         static bool IsMouseDown(MouseButton button);
@@ -61,11 +64,18 @@ namespace honto
         static bool HasMouse();
 
     private:
-        static bool s_Current[256];
-        static bool s_Previous[256];
-        static bool s_CurrentMouse[3];
-        static bool s_PreviousMouse[3];
-        static Vec2 s_MousePosition;
-        static bool s_HasMouse;
+        struct ContextState
+        {
+            bool current[256] {};
+            bool previous[256] {};
+            bool currentMouse[3] {};
+            bool previousMouse[3] {};
+            Vec2 mousePosition {};
+            bool hasMouse = false;
+        };
+
+        static ContextState* ActiveState();
+        static std::unordered_map<const Window*, ContextState> s_ContextStates;
+        static const Window* s_ActiveWindow;
     };
 }

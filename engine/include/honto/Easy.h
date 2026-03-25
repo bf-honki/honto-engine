@@ -10,6 +10,7 @@
 #include "Texture.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cmath>
@@ -736,6 +737,666 @@ namespace HonTo
     namespace detail
     {
         struct StageState;
+        std::function<std::unique_ptr<honto::Scene>()> MakeScriptSceneFactory(std::function<void(Stage&)> setup);
+
+        inline std::string Trim(const std::string& text)
+        {
+            std::size_t first = 0;
+            while (first < text.size() && std::isspace(static_cast<unsigned char>(text[first])) != 0)
+            {
+                ++first;
+            }
+
+            std::size_t last = text.size();
+            while (last > first && std::isspace(static_cast<unsigned char>(text[last - 1])) != 0)
+            {
+                --last;
+            }
+
+            return text.substr(first, last - first);
+        }
+
+        inline std::string ToLowerAscii(std::string text)
+        {
+            for (char& ch : text)
+            {
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            }
+
+            return text;
+        }
+
+        inline std::string NormalizeCommandName(const std::string& name)
+        {
+            std::string normalized = ToLowerAscii(Trim(name));
+            if (normalized.rfind("honto", 0) == 0)
+            {
+                normalized.erase(0, 5);
+            }
+
+            return normalized;
+        }
+
+        inline std::string Unquote(std::string text)
+        {
+            text = Trim(text);
+            if (text.size() >= 2 &&
+                ((text.front() == '"' && text.back() == '"') ||
+                 (text.front() == '\'' && text.back() == '\'')))
+            {
+                text = text.substr(1, text.size() - 2);
+            }
+
+            std::string output;
+            output.reserve(text.size());
+
+            bool escaping = false;
+            for (char ch : text)
+            {
+                if (escaping)
+                {
+                    switch (ch)
+                    {
+                    case 'n':
+                        output.push_back('\n');
+                        break;
+                    case 'r':
+                        output.push_back('\r');
+                        break;
+                    case 't':
+                        output.push_back('\t');
+                        break;
+                    case '\\':
+                    case '"':
+                    case '\'':
+                        output.push_back(ch);
+                        break;
+                    default:
+                        output.push_back(ch);
+                        break;
+                    }
+
+                    escaping = false;
+                    continue;
+                }
+
+                if (ch == '\\')
+                {
+                    escaping = true;
+                    continue;
+                }
+
+                output.push_back(ch);
+            }
+
+            if (escaping)
+            {
+                output.push_back('\\');
+            }
+
+            return output;
+        }
+
+        inline std::string NormalizeNumberToken(const std::string& token)
+        {
+            std::string text = Trim(token);
+            if (!text.empty() && (text.back() == 'f' || text.back() == 'F'))
+            {
+                text.pop_back();
+            }
+
+            return text;
+        }
+
+        inline std::vector<std::string> SplitCommandArguments(const std::string& argumentsText)
+        {
+            std::vector<std::string> result;
+            std::string current;
+            int nesting = 0;
+            char quote = 0;
+            bool escaping = false;
+
+            for (char ch : argumentsText)
+            {
+                if (quote != 0)
+                {
+                    current.push_back(ch);
+                    if (escaping)
+                    {
+                        escaping = false;
+                        continue;
+                    }
+
+                    if (ch == '\\')
+                    {
+                        escaping = true;
+                        continue;
+                    }
+
+                    if (ch == quote)
+                    {
+                        quote = 0;
+                    }
+
+                    continue;
+                }
+
+                if (ch == '"' || ch == '\'')
+                {
+                    quote = ch;
+                    current.push_back(ch);
+                    continue;
+                }
+
+                if (ch == '(' || ch == '[' || ch == '{')
+                {
+                    ++nesting;
+                    current.push_back(ch);
+                    continue;
+                }
+
+                if (ch == ')' || ch == ']' || ch == '}')
+                {
+                    if (nesting > 0)
+                    {
+                        --nesting;
+                    }
+
+                    current.push_back(ch);
+                    continue;
+                }
+
+                if (ch == ',' && nesting == 0)
+                {
+                    result.push_back(Trim(current));
+                    current.clear();
+                    continue;
+                }
+
+                current.push_back(ch);
+            }
+
+            if (!current.empty() || !result.empty())
+            {
+                result.push_back(Trim(current));
+            }
+
+            if (result.size() == 1 && result.front().empty())
+            {
+                result.clear();
+            }
+
+            return result;
+        }
+
+        struct ParsedCommand
+        {
+            std::string name;
+            std::vector<std::string> args;
+            bool valid = false;
+        };
+
+        inline ParsedCommand ParseCommand(const std::string& commandText)
+        {
+            ParsedCommand parsed;
+            const std::string trimmed = Trim(commandText);
+            if (trimmed.empty())
+            {
+                return parsed;
+            }
+
+            const std::size_t openParen = trimmed.find('(');
+            if (openParen == std::string::npos)
+            {
+                parsed.name = trimmed;
+                parsed.valid = true;
+                return parsed;
+            }
+
+            const std::size_t closeParen = trimmed.rfind(')');
+            if (closeParen == std::string::npos || closeParen < openParen)
+            {
+                return parsed;
+            }
+
+            if (!Trim(trimmed.substr(closeParen + 1)).empty())
+            {
+                return parsed;
+            }
+
+            parsed.name = Trim(trimmed.substr(0, openParen));
+            parsed.args = SplitCommandArguments(trimmed.substr(openParen + 1, closeParen - openParen - 1));
+            parsed.valid = !parsed.name.empty();
+            return parsed;
+        }
+
+        inline bool TryParseFloat(const std::string& token, float& value)
+        {
+            try
+            {
+                const std::string normalized = NormalizeNumberToken(Unquote(token));
+                std::size_t parsedLength = 0;
+                value = std::stof(normalized, &parsedLength);
+                return parsedLength == normalized.size();
+            }
+            catch (...)
+            {
+                return false;
+            }
+        }
+
+        inline bool TryParseInt(const std::string& token, int& value)
+        {
+            try
+            {
+                const std::string normalized = NormalizeNumberToken(Unquote(token));
+                std::size_t parsedLength = 0;
+                value = std::stoi(normalized, &parsedLength);
+                return parsedLength == normalized.size();
+            }
+            catch (...)
+            {
+                return false;
+            }
+        }
+
+        inline bool TryParseBool(const std::string& token, bool& value)
+        {
+            const std::string normalized = ToLowerAscii(Unquote(token));
+            if (normalized == "true" || normalized == "1" || normalized == "yes" || normalized == "on")
+            {
+                value = true;
+                return true;
+            }
+
+            if (normalized == "false" || normalized == "0" || normalized == "no" || normalized == "off")
+            {
+                value = false;
+                return true;
+            }
+
+            return false;
+        }
+
+        inline bool TryParseChar(const std::string& token, char& value)
+        {
+            const std::string normalized = Unquote(token);
+            if (normalized.size() != 1)
+            {
+                return false;
+            }
+
+            value = normalized.front();
+            return true;
+        }
+
+        inline bool TryParseKey(const std::string& token, Key& value)
+        {
+            std::string normalized = ToLowerAscii(Unquote(token));
+            const std::string prefixA = "honto::hontokey::";
+            const std::string prefixB = "hontokey::";
+            const std::string prefixC = "key::";
+            if (normalized.rfind(prefixA, 0) == 0)
+            {
+                normalized.erase(0, prefixA.size());
+            }
+            else if (normalized.rfind(prefixB, 0) == 0)
+            {
+                normalized.erase(0, prefixB.size());
+            }
+            else if (normalized.rfind(prefixC, 0) == 0)
+            {
+                normalized.erase(0, prefixC.size());
+            }
+
+            if (normalized == "tab")
+            {
+                value = Key::Tab;
+                return true;
+            }
+            if (normalized == "left")
+            {
+                value = Key::Left;
+                return true;
+            }
+            if (normalized == "right")
+            {
+                value = Key::Right;
+                return true;
+            }
+            if (normalized == "up")
+            {
+                value = Key::Up;
+                return true;
+            }
+            if (normalized == "down")
+            {
+                value = Key::Down;
+                return true;
+            }
+            if (normalized == "escape" || normalized == "esc")
+            {
+                value = Key::Escape;
+                return true;
+            }
+            if (normalized == "enter" || normalized == "return")
+            {
+                value = Key::Enter;
+                return true;
+            }
+            if (normalized == "shift")
+            {
+                value = Key::Shift;
+                return true;
+            }
+            if (normalized == "f1")
+            {
+                value = Key::F1;
+                return true;
+            }
+            if (normalized == "f2")
+            {
+                value = Key::F2;
+                return true;
+            }
+            if (normalized == "f3")
+            {
+                value = Key::F3;
+                return true;
+            }
+            if (normalized == "f4")
+            {
+                value = Key::F4;
+                return true;
+            }
+            if (normalized == "f5")
+            {
+                value = Key::F5;
+                return true;
+            }
+            if (normalized == "space")
+            {
+                value = Key::Space;
+                return true;
+            }
+            if (normalized == "a")
+            {
+                value = Key::A;
+                return true;
+            }
+            if (normalized == "d")
+            {
+                value = Key::D;
+                return true;
+            }
+            if (normalized == "e")
+            {
+                value = Key::E;
+                return true;
+            }
+            if (normalized == "m")
+            {
+                value = Key::M;
+                return true;
+            }
+            if (normalized == "q")
+            {
+                value = Key::Q;
+                return true;
+            }
+            if (normalized == "s")
+            {
+                value = Key::S;
+                return true;
+            }
+            if (normalized == "w")
+            {
+                value = Key::W;
+                return true;
+            }
+
+            return false;
+        }
+
+        inline bool TryParseColorComponent(const std::string& token, std::uint8_t& value)
+        {
+            int parsed = 0;
+            if (!TryParseInt(token, parsed))
+            {
+                return false;
+            }
+
+            value = static_cast<std::uint8_t>(std::clamp(parsed, 0, 255));
+            return true;
+        }
+
+        inline bool TryParseColorToken(const std::string& token, Color& color)
+        {
+            const ParsedCommand parsed = ParseCommand(token);
+            if (!parsed.valid)
+            {
+                return false;
+            }
+
+            const std::string name = NormalizeCommandName(parsed.name);
+            if (name != "rgba" && name != "color")
+            {
+                return false;
+            }
+
+            if (parsed.args.size() != 3 && parsed.args.size() != 4)
+            {
+                return false;
+            }
+
+            std::uint8_t r = 255;
+            std::uint8_t g = 255;
+            std::uint8_t b = 255;
+            std::uint8_t a = 255;
+
+            if (!TryParseColorComponent(parsed.args[0], r) ||
+                !TryParseColorComponent(parsed.args[1], g) ||
+                !TryParseColorComponent(parsed.args[2], b))
+            {
+                return false;
+            }
+
+            if (parsed.args.size() == 4 && !TryParseColorComponent(parsed.args[3], a))
+            {
+                return false;
+            }
+
+            color = RGBA(r, g, b, a);
+            return true;
+        }
+
+        inline bool TryParseColor(
+            const std::vector<std::string>& args,
+            std::size_t index,
+            std::size_t remainingColors,
+            Color& color,
+            std::size_t& consumed)
+        {
+            consumed = 0;
+            if (index >= args.size())
+            {
+                return false;
+            }
+
+            if (TryParseColorToken(args[index], color))
+            {
+                consumed = 1;
+                return true;
+            }
+
+            const std::size_t remainingArgs = args.size() - index;
+            std::size_t stride = 0;
+            if (remainingColors > 0)
+            {
+                if (remainingArgs == remainingColors * 3)
+                {
+                    stride = 3;
+                }
+                else if (remainingArgs == remainingColors * 4)
+                {
+                    stride = 4;
+                }
+            }
+
+            if (stride == 0)
+            {
+                if (remainingArgs >= 4)
+                {
+                    stride = 4;
+                }
+                else if (remainingArgs >= 3)
+                {
+                    stride = 3;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            std::uint8_t r = 255;
+            std::uint8_t g = 255;
+            std::uint8_t b = 255;
+            std::uint8_t a = 255;
+            if (!TryParseColorComponent(args[index], r) ||
+                !TryParseColorComponent(args[index + 1], g) ||
+                !TryParseColorComponent(args[index + 2], b))
+            {
+                return false;
+            }
+
+            if (stride == 4 && !TryParseColorComponent(args[index + 3], a))
+            {
+                return false;
+            }
+
+            color = RGBA(r, g, b, a);
+            consumed = stride;
+            return true;
+        }
+
+        inline bool TryParseColors(
+            const std::vector<std::string>& args,
+            std::size_t colorCount,
+            std::vector<Color>& colors)
+        {
+            colors.clear();
+            std::size_t index = 0;
+            std::size_t remainingColors = colorCount;
+            while (remainingColors > 0)
+            {
+                Color color {};
+                std::size_t consumed = 0;
+                if (!TryParseColor(args, index, remainingColors, color, consumed))
+                {
+                    colors.clear();
+                    return false;
+                }
+
+                colors.push_back(color);
+                index += consumed;
+                --remainingColors;
+            }
+
+            return index == args.size();
+        }
+
+        inline bool TryParseLooseColor(
+            const std::vector<std::string>& args,
+            std::size_t index,
+            Color& color,
+            std::size_t& consumed)
+        {
+            consumed = 0;
+            if (index >= args.size())
+            {
+                return false;
+            }
+
+            if (TryParseColorToken(args[index], color))
+            {
+                consumed = 1;
+                return true;
+            }
+
+            std::uint8_t r = 255;
+            std::uint8_t g = 255;
+            std::uint8_t b = 255;
+            std::uint8_t a = 255;
+
+            if ((args.size() - index) >= 4 &&
+                TryParseColorComponent(args[index], r) &&
+                TryParseColorComponent(args[index + 1], g) &&
+                TryParseColorComponent(args[index + 2], b) &&
+                TryParseColorComponent(args[index + 3], a))
+            {
+                color = RGBA(r, g, b, a);
+                consumed = 4;
+                return true;
+            }
+
+            if ((args.size() - index) >= 3 &&
+                TryParseColorComponent(args[index], r) &&
+                TryParseColorComponent(args[index + 1], g) &&
+                TryParseColorComponent(args[index + 2], b))
+            {
+                color = RGBA(r, g, b, 255);
+                consumed = 3;
+                return true;
+            }
+
+            return false;
+        }
+
+        inline std::vector<std::string> ParseMapRows(const std::string& token)
+        {
+            std::string normalized = Unquote(token);
+            std::string expanded;
+            expanded.reserve(normalized.size());
+
+            for (std::size_t index = 0; index < normalized.size(); ++index)
+            {
+                if (normalized[index] == '\\' &&
+                    (index + 1) < normalized.size() &&
+                    normalized[index + 1] == 'n')
+                {
+                    expanded.push_back('\n');
+                    ++index;
+                    continue;
+                }
+
+                if (normalized[index] != '\r')
+                {
+                    expanded.push_back(normalized[index]);
+                }
+            }
+
+            std::vector<std::string> rows;
+            std::string current;
+            for (char ch : expanded)
+            {
+                if (ch == '\n' || ch == '|')
+                {
+                    rows.push_back(current);
+                    current.clear();
+                    continue;
+                }
+
+                current.push_back(ch);
+            }
+
+            if (!current.empty() || rows.empty())
+            {
+                rows.push_back(current);
+            }
+
+            return rows;
+        }
 
         struct ActorState
         {
@@ -1465,6 +2126,12 @@ namespace HonTo
                 return false;
             }
 
+            const auto node = Node();
+            if (node == nullptr || !node->IsVisible())
+            {
+                return false;
+            }
+
             const Vec2 min = Position();
             const Vec2 max = min + (Size() * ScaleValue());
             return point.x >= min.x &&
@@ -1484,6 +2151,346 @@ namespace HonTo
 
         Animation Animate() const;
         FrameAnimation AnimateFrames() const;
+
+        const Actor& Code(const std::string& command) const
+        {
+            const detail::ParsedCommand parsed = detail::ParseCommand(command);
+            if (!parsed.valid)
+            {
+                return *this;
+            }
+
+            const std::string name = detail::NormalizeCommandName(parsed.name);
+            const auto& args = parsed.args;
+
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+            float w = 0.0f;
+            bool enabled = false;
+            bool secondEnabled = false;
+            int integer = 0;
+            std::size_t consumed = 0;
+            Color color {};
+
+            if (name == "at" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return At(x, y);
+            }
+
+            if (name == "move" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return Move(x, y);
+            }
+
+            if (name == "size" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return Size(x, y);
+            }
+
+            if (name == "scale")
+            {
+                if (args.size() == 1 && detail::TryParseFloat(args[0], x))
+                {
+                    return Scale(x);
+                }
+
+                if (args.size() >= 2 &&
+                    detail::TryParseFloat(args[0], x) &&
+                    detail::TryParseFloat(args[1], y))
+                {
+                    return Scale(x, y);
+                }
+            }
+
+            if (name == "layer" && !args.empty() && detail::TryParseInt(args[0], integer))
+            {
+                return Layer(integer);
+            }
+
+            if (name == "show")
+            {
+                if (args.empty())
+                {
+                    return Show(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return Show(enabled);
+                }
+            }
+
+            if (name == "hide")
+            {
+                return Hide();
+            }
+
+            if ((name == "paint" || name == "color" || name == "tint") &&
+                detail::TryParseColor(args, 0, 1, color, consumed) &&
+                consumed == args.size())
+            {
+                return Paint(color);
+            }
+
+            if ((name == "text" || name == "textvalue") && !args.empty())
+            {
+                return TextValue(detail::Unquote(args[0]));
+            }
+
+            if (name == "textscale" && !args.empty() && detail::TryParseInt(args[0], integer))
+            {
+                return TextScale(integer);
+            }
+
+            if (name == "usecamera" && !args.empty() && detail::TryParseBool(args[0], enabled))
+            {
+                return UseCamera(enabled);
+            }
+
+            if (name == "barvalue" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return BarValue(x);
+            }
+
+            if (name == "barcolors")
+            {
+                std::vector<Color> colors;
+                if (detail::TryParseColors(args, 3, colors))
+                {
+                    return BarColors(colors[0], colors[1], colors[2]);
+                }
+            }
+
+            if (name == "buttoncolors")
+            {
+                std::vector<Color> colors;
+                if (detail::TryParseColors(args, 4, colors))
+                {
+                    return ButtonColors(colors[0], colors[1], colors[2], colors[3]);
+                }
+            }
+
+            if (name == "buttontextcolor" &&
+                detail::TryParseColor(args, 0, 1, color, consumed) &&
+                consumed == args.size())
+            {
+                return ButtonTextColor(color);
+            }
+
+            if (name == "buttonstate" &&
+                args.size() >= 2 &&
+                detail::TryParseBool(args[0], enabled) &&
+                detail::TryParseBool(args[1], secondEnabled))
+            {
+                return ButtonState(enabled, secondEnabled);
+            }
+
+            if (name == "usetexture" && !args.empty())
+            {
+                return UseTexture(LoadTexture(detail::Unquote(args[0])));
+            }
+
+            if (name == "usetextureregion" &&
+                args.size() >= 4 &&
+                detail::TryParseInt(args[0], integer))
+            {
+                int regionY = 0;
+                int regionWidth = 0;
+                int regionHeight = 0;
+                if (detail::TryParseInt(args[1], regionY) &&
+                    detail::TryParseInt(args[2], regionWidth) &&
+                    detail::TryParseInt(args[3], regionHeight))
+                {
+                    return UseTextureRegion(integer, regionY, regionWidth, regionHeight);
+                }
+            }
+
+            if (name == "cleartextureregion")
+            {
+                return ClearTextureRegion();
+            }
+
+            if (name == "usetextureframe")
+            {
+                int frameIndex = 0;
+                int frameWidth = 0;
+                int frameHeight = 0;
+                int columns = 0;
+                if (args.size() >= 3 &&
+                    detail::TryParseInt(args[0], frameIndex) &&
+                    detail::TryParseInt(args[1], frameWidth) &&
+                    detail::TryParseInt(args[2], frameHeight))
+                {
+                    if (args.size() >= 4)
+                    {
+                        if (!detail::TryParseInt(args[3], columns))
+                        {
+                            columns = 0;
+                        }
+                    }
+
+                    return UseTextureFrame(frameIndex, frameWidth, frameHeight, columns);
+                }
+            }
+
+            if (name == "thickness" && !args.empty() && detail::TryParseInt(args[0], integer))
+            {
+                return Thickness(integer);
+            }
+
+            if (name == "velocity" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return Velocity(x, y);
+            }
+
+            if (name == "movebyvelocity")
+            {
+                return MoveByVelocity();
+            }
+
+            if (name == "usegravity")
+            {
+                if (args.empty())
+                {
+                    return UseGravity();
+                }
+
+                if (detail::TryParseFloat(args[0], x))
+                {
+                    return UseGravity(x);
+                }
+            }
+
+            if (name == "groundat" && !args.empty() && detail::TryParseFloat(args[0], y))
+            {
+                if (args.size() >= 2 && detail::TryParseFloat(args[1], x))
+                {
+                    return GroundAt(y, x);
+                }
+
+                return GroundAt(y);
+            }
+
+            if (name == "jump" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return Jump(x);
+            }
+
+            if (name == "movewitharrows" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                if (args.size() >= 2 && detail::TryParseBool(args[1], enabled))
+                {
+                    return MoveWithArrows(x, enabled);
+                }
+
+                return MoveWithArrows(x);
+            }
+
+            if (name == "moveleftright" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                if (args.size() >= 2 && detail::TryParseBool(args[1], enabled))
+                {
+                    return MoveLeftRight(x, enabled);
+                }
+
+                return MoveLeftRight(x);
+            }
+
+            if (name == "jumpwhenpressed" && args.size() >= 2)
+            {
+                Key key {};
+                if (detail::TryParseKey(args[0], key) && detail::TryParseFloat(args[1], x))
+                {
+                    return JumpWhenPressed(key, x);
+                }
+            }
+
+            if (name == "keepinside" && args.size() >= 4 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y) &&
+                detail::TryParseFloat(args[2], z) &&
+                detail::TryParseFloat(args[3], w))
+            {
+                return KeepInside(x, y, z, w);
+            }
+
+            if (name == "bounceinside" && args.size() >= 4 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y) &&
+                detail::TryParseFloat(args[2], z) &&
+                detail::TryParseFloat(args[3], w))
+            {
+                return BounceInside(x, y, z, w);
+            }
+
+            if (name == "patrolx" && args.size() >= 3 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y) &&
+                detail::TryParseFloat(args[2], z))
+            {
+                return PatrolX(x, y, z);
+            }
+
+            if (name == "collidewithmap" && !args.empty())
+            {
+                if (const auto stage = LockStage())
+                {
+                    const std::string targetName = detail::Unquote(args[0]);
+                    const auto found = stage->namedActors.find(targetName);
+                    if (found != stage->namedActors.end() &&
+                        found->second != nullptr &&
+                        std::dynamic_pointer_cast<honto::TileMap>(found->second->node) != nullptr)
+                    {
+                        if (m_State != nullptr)
+                        {
+                            m_State->collisionMap = std::dynamic_pointer_cast<honto::TileMap>(found->second->node);
+                        }
+
+                        return EnsurePhysics();
+                    }
+                }
+            }
+
+            if ((name == "chase" || name == "chasex") && args.size() >= 2)
+            {
+                if (const auto stage = LockStage())
+                {
+                    const std::string targetName = detail::Unquote(args[0]);
+                    const auto found = stage->namedActors.find(targetName);
+                    if (found != stage->namedActors.end() &&
+                        found->second != nullptr &&
+                        detail::TryParseFloat(args[1], x))
+                    {
+                        Actor target(found->second);
+                        float stopDistance = 0.0f;
+                        if (args.size() >= 3)
+                        {
+                            detail::TryParseFloat(args[2], stopDistance);
+                        }
+
+                        return name == "chase"
+                            ? Chase(target, x, stopDistance)
+                            : ChaseX(target, x, stopDistance);
+                    }
+                }
+            }
+
+            return *this;
+        }
+
+        const Actor& hontoCode(const std::string& command) const
+        {
+            return Code(command);
+        }
 
         const Actor& hontoAt(float x, float y) const
         {
@@ -2471,6 +3478,118 @@ namespace HonTo
             return false;
         }
 
+        TileMapActor& Code(const std::string& command) const
+        {
+            const detail::ParsedCommand parsed = detail::ParseCommand(command);
+            if (!parsed.valid)
+            {
+                Actor::Code(command);
+                return const_cast<TileMapActor&>(*this);
+            }
+
+            const std::string name = detail::NormalizeCommandName(parsed.name);
+            const auto& args = parsed.args;
+
+            char tile = '\0';
+            int column = 0;
+            int row = 0;
+            float x = 0.0f;
+            float y = 0.0f;
+            std::size_t consumed = 0;
+            bool enabled = false;
+            Color color {};
+
+            if (name == "map" && !args.empty())
+            {
+                return Map(detail::ParseMapRows(args[0]));
+            }
+
+            if (name == "tilesize" &&
+                args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return TileSize(x, y);
+            }
+
+            if (name == "tile" &&
+                args.size() >= 4 &&
+                detail::TryParseChar(args[0], tile) &&
+                detail::TryParseLooseColor(args, 1, color, consumed))
+            {
+                bool solid = false;
+                bool visible = true;
+                std::size_t next = 1 + consumed;
+                if (next < args.size())
+                {
+                    detail::TryParseBool(args[next], solid);
+                    ++next;
+                }
+
+                if (next < args.size())
+                {
+                    detail::TryParseBool(args[next], visible);
+                }
+
+                return Tile(tile, color, solid, visible);
+            }
+
+            if (name == "tiletexture" &&
+                args.size() >= 2 &&
+                detail::TryParseChar(args[0], tile))
+            {
+                return TileTexture(tile, LoadTexture(detail::Unquote(args[1])));
+            }
+
+            if (name == "tiletextureregion" &&
+                args.size() >= 6 &&
+                detail::TryParseChar(args[0], tile) &&
+                detail::TryParseInt(args[2], column) &&
+                detail::TryParseInt(args[3], row))
+            {
+                int width = 0;
+                int height = 0;
+                if (detail::TryParseInt(args[4], width) &&
+                    detail::TryParseInt(args[5], height))
+                {
+                    return TileTextureRegion(tile, LoadTexture(detail::Unquote(args[1])), column, row, width, height);
+                }
+            }
+
+            if (name == "tilesolid" &&
+                args.size() >= 2 &&
+                detail::TryParseChar(args[0], tile) &&
+                detail::TryParseBool(args[1], enabled))
+            {
+                return TileSolid(tile, enabled);
+            }
+
+            if (name == "tilevisible" &&
+                args.size() >= 2 &&
+                detail::TryParseChar(args[0], tile) &&
+                detail::TryParseBool(args[1], enabled))
+            {
+                return TileVisible(tile, enabled);
+            }
+
+            if (name == "cell" &&
+                args.size() >= 3 &&
+                detail::TryParseInt(args[0], column) &&
+                detail::TryParseInt(args[1], row) &&
+                detail::TryParseChar(args[2], tile))
+            {
+                return Cell(column, row, tile);
+            }
+
+            Actor::Code(command);
+            return const_cast<TileMapActor&>(*this);
+        }
+
+        TileMapActor& hontoCode(const std::string& command) const
+        {
+            return Code(command);
+        }
+
         TileMapActor& hontoMap(const std::vector<std::string>& map) const
         {
             return Map(map);
@@ -2676,6 +3795,102 @@ namespace HonTo
             }
 
             return 0;
+        }
+
+        ParticleActor& Code(const std::string& command) const
+        {
+            const detail::ParsedCommand parsed = detail::ParseCommand(command);
+            if (!parsed.valid)
+            {
+                Actor::Code(command);
+                return const_cast<ParticleActor&>(*this);
+            }
+
+            const std::string name = detail::NormalizeCommandName(parsed.name);
+            const auto& args = parsed.args;
+
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+            float w = 0.0f;
+            bool enabled = false;
+            int integer = 0;
+            std::size_t consumed = 0;
+            Color startColor {};
+            Color finishColor {};
+
+            if (name == "emissionrate" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return EmissionRate(x);
+            }
+
+            if (name == "spawnarea" &&
+                args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return SpawnArea(x, y);
+            }
+
+            if (name == "velocityrange" &&
+                args.size() >= 4 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y) &&
+                detail::TryParseFloat(args[2], z) &&
+                detail::TryParseFloat(args[3], w))
+            {
+                return VelocityRange({ x, y }, { z, w });
+            }
+
+            if (name == "lifetimerange" &&
+                args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return LifetimeRange(x, y);
+            }
+
+            if (name == "sizerange" &&
+                args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return SizeRange(x, y);
+            }
+
+            if (name == "colorrange" &&
+                detail::TryParseLooseColor(args, 0, startColor, consumed))
+            {
+                std::vector<std::string> remainder(args.begin() + static_cast<std::ptrdiff_t>(consumed), args.end());
+                std::size_t finishConsumed = 0;
+                if (detail::TryParseLooseColor(remainder, 0, finishColor, finishConsumed))
+                {
+                    return ColorRange(startColor, finishColor);
+                }
+            }
+
+            if (name == "usecamera" && !args.empty() && detail::TryParseBool(args[0], enabled))
+            {
+                return UseCamera(enabled);
+            }
+
+            if (name == "burst" && !args.empty() && detail::TryParseInt(args[0], integer))
+            {
+                return Burst(integer);
+            }
+
+            if (name == "clear")
+            {
+                return Clear();
+            }
+
+            Actor::Code(command);
+            return const_cast<ParticleActor&>(*this);
+        }
+
+        ParticleActor& hontoCode(const std::string& command) const
+        {
+            return Code(command);
         }
 
         ParticleActor& hontoEmissionRate(float particlesPerSecond) const
@@ -3032,6 +4247,259 @@ namespace HonTo
             }
 
             return *this;
+        }
+
+        RaycastActor& Code(const std::string& command)
+        {
+            const detail::ParsedCommand parsed = detail::ParseCommand(command);
+            if (!parsed.valid)
+            {
+                Actor::Code(command);
+                return *this;
+            }
+
+            const std::string name = detail::NormalizeCommandName(parsed.name);
+            const auto& args = parsed.args;
+
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+            float w = 0.0f;
+            char cell = '\0';
+            std::size_t consumed = 0;
+            Color color {};
+
+            if (name == "map" && !args.empty())
+            {
+                return hontoMap(detail::ParseMapRows(args[0]));
+            }
+
+            if (name == "player" &&
+                args.size() >= 3 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y) &&
+                detail::TryParseFloat(args[2], z))
+            {
+                return hontoPlayer(x, y, z);
+            }
+
+            if (name == "viewdegrees" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return hontoViewDegrees(x);
+            }
+
+            if (name == "movespeed" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return hontoMoveSpeed(x);
+            }
+
+            if (name == "turnspeed" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return hontoTurnSpeed(x);
+            }
+
+            if (name == "runmultiplier" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return hontoRunMultiplier(x);
+            }
+
+            if ((name == "floor" || name == "ceiling" || name == "fog") &&
+                detail::TryParseLooseColor(args, 0, color, consumed))
+            {
+                if (name == "floor")
+                {
+                    return hontoFloor(color);
+                }
+
+                if (name == "ceiling")
+                {
+                    return hontoCeiling(color);
+                }
+
+                float strength = 0.35f;
+                if (consumed < args.size())
+                {
+                    detail::TryParseFloat(args[consumed], strength);
+                }
+
+                return hontoFog(color, strength);
+            }
+
+            if ((name == "wall" || name == "door") &&
+                args.size() >= 2 &&
+                detail::TryParseChar(args[0], cell) &&
+                detail::TryParseLooseColor(args, 1, color, consumed))
+            {
+                if (name == "wall")
+                {
+                    return hontoWall(cell, color);
+                }
+
+                float openSeconds = 0.8f;
+                float holdSeconds = 1.6f;
+                std::size_t next = 1 + consumed;
+                if (next < args.size())
+                {
+                    detail::TryParseFloat(args[next], openSeconds);
+                    ++next;
+                }
+                if (next < args.size())
+                {
+                    detail::TryParseFloat(args[next], holdSeconds);
+                }
+
+                return hontoDoor(cell, color, openSeconds, holdSeconds);
+            }
+
+            if (name == "walltexture" &&
+                args.size() >= 2 &&
+                detail::TryParseChar(args[0], cell))
+            {
+                return hontoWallTexture(cell, LoadTexture(detail::Unquote(args[1])));
+            }
+
+            if (name == "doortexture" &&
+                args.size() >= 2 &&
+                detail::TryParseChar(args[0], cell))
+            {
+                return hontoDoorTexture(cell, LoadTexture(detail::Unquote(args[1])));
+            }
+
+            if (name == "thing" && args.size() >= 5 &&
+                detail::TryParseFloat(args[1], x) &&
+                detail::TryParseFloat(args[2], y) &&
+                detail::TryParseFloat(args[3], z) &&
+                detail::TryParseFloat(args[4], w))
+            {
+                Color tint = RGBA(255, 255, 255);
+                float bobAmount = 0.0f;
+                float bobSpeed = 0.0f;
+                std::size_t next = 5;
+                if (next < args.size() && detail::TryParseLooseColor(args, next, tint, consumed))
+                {
+                    next += consumed;
+                }
+                if (next < args.size())
+                {
+                    detail::TryParseFloat(args[next], bobAmount);
+                    ++next;
+                }
+                if (next < args.size())
+                {
+                    detail::TryParseFloat(args[next], bobSpeed);
+                }
+
+                return hontoThing(detail::Unquote(args[0]), x, y, z, w, tint, bobAmount, bobSpeed);
+            }
+
+            if (name == "thingtexture" && args.size() >= 6 &&
+                detail::TryParseFloat(args[1], x) &&
+                detail::TryParseFloat(args[2], y) &&
+                detail::TryParseFloat(args[3], z) &&
+                detail::TryParseFloat(args[4], w))
+            {
+                Color tint = RGBA(255, 255, 255);
+                float bobAmount = 0.0f;
+                float bobSpeed = 0.0f;
+                std::size_t next = 6;
+                if (next < args.size() && detail::TryParseLooseColor(args, next, tint, consumed))
+                {
+                    next += consumed;
+                }
+                if (next < args.size())
+                {
+                    detail::TryParseFloat(args[next], bobAmount);
+                    ++next;
+                }
+                if (next < args.size())
+                {
+                    detail::TryParseFloat(args[next], bobSpeed);
+                }
+
+                return hontoThingTexture(
+                    detail::Unquote(args[0]),
+                    x,
+                    y,
+                    z,
+                    w,
+                    LoadTexture(detail::Unquote(args[5])),
+                    tint,
+                    bobAmount,
+                    bobSpeed
+                );
+            }
+
+            if (name == "clearthings")
+            {
+                return hontoClearThings();
+            }
+
+            if (name == "doomcontrols")
+            {
+                float moveSpeed = 3.0f;
+                float turnSpeed = 2.0f;
+                if (!args.empty())
+                {
+                    detail::TryParseFloat(args[0], moveSpeed);
+                }
+                if (args.size() >= 2)
+                {
+                    detail::TryParseFloat(args[1], turnSpeed);
+                }
+
+                return hontoDoomControls(moveSpeed, turnSpeed);
+            }
+
+            if (name == "weapon" &&
+                args.size() >= 3 &&
+                detail::TryParseFloat(args[1], x) &&
+                detail::TryParseFloat(args[2], y))
+            {
+                Color tint = RGBA(255, 255, 255);
+                if (args.size() > 3)
+                {
+                    detail::TryParseLooseColor(args, 3, tint, consumed);
+                }
+
+                return hontoWeapon(LoadTexture(detail::Unquote(args[0])), x, y, tint);
+            }
+
+            if (name == "weaponbob" &&
+                args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return hontoWeaponBob(x, y);
+            }
+
+            if (name == "minimap")
+            {
+                bool showMap = true;
+                float scale = 8.0f;
+                if (!args.empty())
+                {
+                    detail::TryParseBool(args[0], showMap);
+                }
+                if (args.size() >= 2)
+                {
+                    detail::TryParseFloat(args[1], scale);
+                }
+
+                return hontoMiniMap(showMap, scale);
+            }
+
+            if (name == "maxdistance" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return hontoMaxDistance(x);
+            }
+
+            Actor::Code(command);
+            return *this;
+        }
+
+        RaycastActor& hontoCode(const std::string& command)
+        {
+            return Code(command);
         }
 
     private:
@@ -3882,6 +5350,346 @@ namespace HonTo
             PlayTone(frequency, durationMs);
         }
 
+        Stage& Code(const std::string& command) const
+        {
+            const detail::ParsedCommand parsed = detail::ParseCommand(command);
+            if (!parsed.valid)
+            {
+                return const_cast<Stage&>(*this);
+            }
+
+            const std::string name = detail::NormalizeCommandName(parsed.name);
+            const auto& args = parsed.args;
+
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+            bool enabled = false;
+            int integer = 0;
+            std::size_t consumed = 0;
+            Color color {};
+
+            if ((name == "background" || name == "clear") &&
+                detail::TryParseColor(args, 0, 1, color, consumed) &&
+                consumed == args.size())
+            {
+                const_cast<Stage&>(*this).Background(color);
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "gravity" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                return const_cast<Stage&>(*this).Gravity(x, y);
+            }
+
+            if (name == "cameraat" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                if (args.size() >= 3 && detail::TryParseFloat(args[2], z))
+                {
+                    return const_cast<Stage&>(*this).CameraAt(x, y, z);
+                }
+
+                return const_cast<Stage&>(*this).CameraAt(x, y);
+            }
+
+            if (name == "camerareset")
+            {
+                return const_cast<Stage&>(*this).CameraReset();
+            }
+
+            if (name == "camerashake" && args.size() >= 2 &&
+                detail::TryParseFloat(args[0], x) &&
+                detail::TryParseFloat(args[1], y))
+            {
+                if (args.size() >= 3 && detail::TryParseFloat(args[2], z))
+                {
+                    CameraShake(x, y, z);
+                }
+                else
+                {
+                    CameraShake(x, y);
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if ((name == "camerafollow" || name == "camerafollowsmooth") && !args.empty())
+            {
+                const Actor actor = Find(detail::Unquote(args[0]));
+                if (actor)
+                {
+                    float zoom = 1.0f;
+                    float responsiveness = 8.0f;
+                    if (args.size() >= 2)
+                    {
+                        detail::TryParseFloat(args[1], zoom);
+                    }
+
+                    if (name == "camerafollowsmooth")
+                    {
+                        if (args.size() >= 3)
+                        {
+                            detail::TryParseFloat(args[2], responsiveness);
+                        }
+
+                        const_cast<Stage&>(*this).CameraFollowSmooth(actor, zoom, responsiveness);
+                    }
+                    else
+                    {
+                        const_cast<Stage&>(*this).CameraFollow(actor, zoom);
+                    }
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if ((name == "setmastervolume" || name == "mastervolume") &&
+                !args.empty() &&
+                detail::TryParseFloat(args[0], x))
+            {
+                SetMasterVolume(x);
+                return const_cast<Stage&>(*this);
+            }
+
+            if ((name == "setbusvolume" || name == "busvolume") &&
+                args.size() >= 2 &&
+                detail::TryParseFloat(args[1], x))
+            {
+                SetBusVolume(detail::Unquote(args[0]), x);
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "playsound" && !args.empty())
+            {
+                if (args.size() >= 2 && detail::TryParseBool(args[1], enabled))
+                {
+                    PlaySound(detail::Unquote(args[0]), enabled);
+                }
+                else
+                {
+                    PlaySound(detail::Unquote(args[0]));
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "playalias" && !args.empty())
+            {
+                if (args.size() >= 2 && detail::TryParseBool(args[1], enabled))
+                {
+                    PlayAlias(detail::Unquote(args[0]), enabled);
+                }
+                else
+                {
+                    PlayAlias(detail::Unquote(args[0]));
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "playonbus" && args.size() >= 2)
+            {
+                if (args.size() >= 3 && detail::TryParseBool(args[2], enabled))
+                {
+                    PlayOnBus(detail::Unquote(args[0]), detail::Unquote(args[1]), enabled);
+                }
+                else
+                {
+                    PlayOnBus(detail::Unquote(args[0]), detail::Unquote(args[1]));
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "playmusic" && !args.empty())
+            {
+                if (args.size() >= 2 && detail::TryParseBool(args[1], enabled))
+                {
+                    PlayMusic(detail::Unquote(args[0]), enabled);
+                }
+                else
+                {
+                    PlayMusic(detail::Unquote(args[0]));
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "playeffect" && !args.empty())
+            {
+                PlayEffect(detail::Unquote(args[0]));
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "stopaudio")
+            {
+                StopAudio();
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "stopaudiobus" && !args.empty())
+            {
+                StopAudioBus(detail::Unquote(args[0]));
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "playtone" &&
+                args.size() >= 2 &&
+                detail::TryParseInt(args[0], integer))
+            {
+                int durationMs = 0;
+                if (detail::TryParseInt(args[1], durationMs))
+                {
+                    PlayTone(integer, durationMs);
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "windowopacity" && !args.empty() && detail::TryParseFloat(args[0], x))
+            {
+                return WindowOpacity(x);
+            }
+
+            if (name == "windowborderless")
+            {
+                if (args.empty())
+                {
+                    return WindowBorderless(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return WindowBorderless(enabled);
+                }
+            }
+
+            if (name == "windowresizable")
+            {
+                if (args.empty())
+                {
+                    return WindowResizable(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return WindowResizable(enabled);
+                }
+            }
+
+            if (name == "windowtopmost")
+            {
+                if (args.empty())
+                {
+                    return WindowTopMost(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return WindowTopMost(enabled);
+                }
+            }
+
+            if (name == "windowsize" &&
+                args.size() >= 2 &&
+                detail::TryParseInt(args[0], integer))
+            {
+                int height = 0;
+                if (detail::TryParseInt(args[1], height))
+                {
+                    return WindowSize(integer, height);
+                }
+            }
+
+            if (name == "windowposition" &&
+                args.size() >= 2 &&
+                detail::TryParseInt(args[0], integer))
+            {
+                int posY = 0;
+                if (detail::TryParseInt(args[1], posY))
+                {
+                    return WindowPosition(integer, posY);
+                }
+            }
+
+            if (name == "windowcenter")
+            {
+                return WindowCenter();
+            }
+
+            if (name == "focuswindow" && !args.empty())
+            {
+                FocusWindow(detail::Unquote(args[0]));
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "closewindow" && !args.empty())
+            {
+                CloseWindow(detail::Unquote(args[0]));
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "closethiswindow")
+            {
+                CloseThisWindow();
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "hidethiswindow")
+            {
+                HideThisWindow();
+                return const_cast<Stage&>(*this);
+            }
+
+            if (name == "openwindow" && args.size() >= 5)
+            {
+                const std::string title = detail::Unquote(args[0]);
+                int windowWidth = 0;
+                int windowHeight = 0;
+                int renderWidth = 0;
+                int renderHeight = 0;
+                if (detail::TryParseInt(args[1], windowWidth) &&
+                    detail::TryParseInt(args[2], windowHeight) &&
+                    detail::TryParseInt(args[3], renderWidth) &&
+                    detail::TryParseInt(args[4], renderHeight))
+                {
+                    Color clearColor = Color { 16, 18, 28, 255 };
+                    if (args.size() > 5)
+                    {
+                        detail::TryParseColor(args, 5, 1, clearColor, consumed);
+                    }
+
+                    OpenWindow(
+                        title,
+                        windowWidth,
+                        windowHeight,
+                        renderWidth,
+                        renderHeight,
+                        [](Stage& blankStage)
+                        {
+                            blankStage.Background(16, 18, 28);
+                        },
+                        clearColor,
+                        false,
+                        true
+                    );
+                }
+
+                return const_cast<Stage&>(*this);
+            }
+
+            return const_cast<Stage&>(*this);
+        }
+
+        Stage& hontoCode(const std::string& command) const
+        {
+            return Code(command);
+        }
+
         void EveryFrame(std::function<void(float)> fn)
         {
             if (m_State == nullptr || fn == nullptr)
@@ -4027,6 +5835,59 @@ namespace HonTo
             honto::Director::Get().FocusWindow(windowIdOrTitle);
         }
 
+        bool OpenWindow(
+            std::string title,
+            int windowWidth,
+            int windowHeight,
+            int renderWidth,
+            int renderHeight,
+            std::function<void(Stage&)> setup,
+            Color clearColor = Color { 16, 18, 28, 255 },
+            bool closeStopsGame = false,
+            bool focusWindow = true
+        ) const
+        {
+            honto::WindowStartup startup;
+            startup.config.title = std::move(title);
+            startup.config.windowId = startup.config.title;
+            startup.config.windowWidth = windowWidth;
+            startup.config.windowHeight = windowHeight;
+            startup.config.renderWidth = renderWidth;
+            startup.config.renderHeight = renderHeight;
+            startup.config.clearColor = clearColor;
+            startup.closeStopsGame = closeStopsGame;
+            startup.focusWindow = focusWindow;
+            startup.createScene = detail::MakeScriptSceneFactory(std::move(setup));
+            return honto::Director::Get().OpenWindow(std::move(startup), focusWindow);
+        }
+
+        bool CloseWindow(const std::string& windowIdOrTitle) const
+        {
+            return honto::Director::Get().CloseWindow(windowIdOrTitle);
+        }
+
+        bool CloseThisWindow() const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->Close();
+                return true;
+            }
+
+            return false;
+        }
+
+        bool HideThisWindow() const
+        {
+            if (auto* window = honto::Director::Get().GetWindow())
+            {
+                window->Hide();
+                return true;
+            }
+
+            return false;
+        }
+
         void hontoGoWindow(
             const std::string& windowIdOrTitle,
             std::function<void(Stage&)> setup,
@@ -4051,6 +5912,46 @@ namespace HonTo
         void hontoFocusWindow(const std::string& windowIdOrTitle) const
         {
             FocusWindow(windowIdOrTitle);
+        }
+
+        bool hontoOpenWindow(
+            std::string title,
+            int windowWidth,
+            int windowHeight,
+            int renderWidth,
+            int renderHeight,
+            std::function<void(Stage&)> setup,
+            Color clearColor = Color { 16, 18, 28, 255 },
+            bool closeStopsGame = false,
+            bool focusWindow = true
+        ) const
+        {
+            return OpenWindow(
+                std::move(title),
+                windowWidth,
+                windowHeight,
+                renderWidth,
+                renderHeight,
+                std::move(setup),
+                clearColor,
+                closeStopsGame,
+                focusWindow
+            );
+        }
+
+        bool hontoCloseWindow(const std::string& windowIdOrTitle) const
+        {
+            return CloseWindow(windowIdOrTitle);
+        }
+
+        bool hontoCloseThisWindow() const
+        {
+            return CloseThisWindow();
+        }
+
+        bool hontoHideThisWindow() const
+        {
+            return HideThisWindow();
         }
 
         void WhilePressing(Key key, std::function<void(float)> fn)
@@ -4291,6 +6192,144 @@ namespace HonTo
             return TopMost(enabled);
         }
 
+        GameBuilder& Code(const std::string& command)
+        {
+            const detail::ParsedCommand parsed = detail::ParseCommand(command);
+            if (!parsed.valid)
+            {
+                return *this;
+            }
+
+            const std::string name = detail::NormalizeCommandName(parsed.name);
+            const auto& args = parsed.args;
+
+            float number = 0.0f;
+            bool enabled = false;
+            int width = 0;
+            Color color {};
+            std::size_t consumed = 0;
+
+            if (name == "title" && !args.empty())
+            {
+                return Title(detail::Unquote(args[0]));
+            }
+
+            if (name == "windowid" && !args.empty())
+            {
+                return WindowId(detail::Unquote(args[0]));
+            }
+
+            if (name == "borderless")
+            {
+                if (args.empty())
+                {
+                    return Borderless(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return Borderless(enabled);
+                }
+            }
+
+            if (name == "resizable")
+            {
+                if (args.empty())
+                {
+                    return Resizable(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return Resizable(enabled);
+                }
+            }
+
+            if (name == "opacity" && !args.empty() && detail::TryParseFloat(args[0], number))
+            {
+                return Opacity(number);
+            }
+
+            if (name == "topmost")
+            {
+                if (args.empty())
+                {
+                    return TopMost(true);
+                }
+
+                if (detail::TryParseBool(args[0], enabled))
+                {
+                    return TopMost(enabled);
+                }
+            }
+
+            if (name == "window" && args.size() >= 2 && detail::TryParseInt(args[0], width))
+            {
+                int height = 0;
+                if (detail::TryParseInt(args[1], height))
+                {
+                    return Window(width, height);
+                }
+            }
+
+            if (name == "render" && args.size() >= 2 && detail::TryParseInt(args[0], width))
+            {
+                int height = 0;
+                if (detail::TryParseInt(args[1], height))
+                {
+                    return Render(width, height);
+                }
+            }
+
+            if (name == "clear" &&
+                detail::TryParseColor(args, 0, 1, color, consumed) &&
+                consumed == args.size())
+            {
+                return Clear(color);
+            }
+
+            if (name == "openwindow" && args.size() >= 5)
+            {
+                const std::string title = detail::Unquote(args[0]);
+                int windowWidth = 0;
+                int windowHeight = 0;
+                int renderWidth = 0;
+                int renderHeight = 0;
+                if (detail::TryParseInt(args[1], windowWidth) &&
+                    detail::TryParseInt(args[2], windowHeight) &&
+                    detail::TryParseInt(args[3], renderWidth) &&
+                    detail::TryParseInt(args[4], renderHeight))
+                {
+                    Color clearColor = Color { 16, 18, 28, 255 };
+                    if (args.size() > 5)
+                    {
+                        detail::TryParseColor(args, 5, 1, clearColor, consumed);
+                    }
+
+                    return OpenWindow(
+                        title,
+                        windowWidth,
+                        windowHeight,
+                        renderWidth,
+                        renderHeight,
+                        [](Stage& stage)
+                        {
+                            stage.Background(16, 18, 28);
+                        },
+                        clearColor,
+                        false
+                    );
+                }
+            }
+
+            return *this;
+        }
+
+        GameBuilder& hontoCode(const std::string& command)
+        {
+            return Code(command);
+        }
+
         GameBuilder& Window(int width, int height)
         {
             m_Config.windowWidth = width;
@@ -4366,11 +6405,16 @@ namespace HonTo
         {
             detail::BuiltGame::BuiltWindow window;
             window.config.title = std::move(title);
+            window.config.windowId = window.config.title;
             window.config.windowWidth = windowWidth;
             window.config.windowHeight = windowHeight;
             window.config.renderWidth = renderWidth;
             window.config.renderHeight = renderHeight;
             window.config.clearColor = clearColor;
+            window.config.resizable = m_Config.resizable;
+            window.config.borderless = m_Config.borderless;
+            window.config.alwaysOnTop = m_Config.alwaysOnTop;
+            window.config.opacity = m_Config.opacity;
             window.closeStopsGame = closeStopsGame;
             window.sceneFactory = []()
             {
@@ -4415,11 +6459,16 @@ namespace HonTo
         {
             detail::BuiltGame::BuiltWindow window;
             window.config.title = std::move(title);
+            window.config.windowId = window.config.title;
             window.config.windowWidth = windowWidth;
             window.config.windowHeight = windowHeight;
             window.config.renderWidth = renderWidth;
             window.config.renderHeight = renderHeight;
             window.config.clearColor = clearColor;
+            window.config.resizable = m_Config.resizable;
+            window.config.borderless = m_Config.borderless;
+            window.config.alwaysOnTop = m_Config.alwaysOnTop;
+            window.config.opacity = m_Config.opacity;
             window.closeStopsGame = closeStopsGame;
             window.sceneFactory = detail::MakeScriptSceneFactory(std::move(setup));
             m_AdditionalWindows.push_back(std::move(window));
