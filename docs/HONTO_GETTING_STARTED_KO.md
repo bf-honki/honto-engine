@@ -72,6 +72,8 @@ cmake --build build --config Release
 - 문서
 - 예제
 
+설치 프로그램 방식이 필요하면 `docs/HONTO_INSTALLER_GUIDE_KO.md`를 보면 됩니다.
+
 ## 6. 새 게임 프로젝트 만들기
 
 이제 스타터 템플릿으로 새 게임을 생성합니다.

@@ -6,6 +6,7 @@ Detailed Korean guide: `docs/HONTO_ENGINE_GUIDE_KO.md`
 Source structure guide: `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
 Sample Code Lab guide: `docs/HONTO_ACADEMY_GUIDE_KO.md`
 Step-by-step SDK quickstart guide: `docs/HONTO_GETTING_STARTED_KO.md`
+Installer workflow guide: `docs/HONTO_INSTALLER_GUIDE_KO.md`
 
 This version now covers the core runtime features most people expect when prototyping a 2D engine:
 
@@ -76,6 +77,20 @@ When configuring that game project, point CMake at the installed SDK:
 ```powershell
 cmake -S . -B build -DCMAKE_PREFIX_PATH="C:/HonToSDK"
 ```
+
+If you want a one-click installer workflow instead of a raw SDK folder, build the installer:
+
+```powershell
+.\scripts\Build-HonToInstaller.ps1
+```
+
+That produces:
+
+```text
+dist\HonToEngine-SDK-Setup.exe
+```
+
+After installing, restart Visual Studio and open a generated HonTo project folder. The starter template now reads `HONTO_SDK_ROOT` automatically, so `find_package(HonToEngine CONFIG REQUIRED)` works without manually typing `CMAKE_PREFIX_PATH`.
 
 If the target machine enforces Smart App Control, you can sign generated game executables during the build:
 

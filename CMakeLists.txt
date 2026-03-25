@@ -169,6 +169,8 @@ install(FILES
     README.md
     docs/HONTO_ENGINE_GUIDE_KO.md
     docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md
+    docs/HONTO_GETTING_STARTED_KO.md
+    docs/HONTO_INSTALLER_GUIDE_KO.md
     DESTINATION "${CMAKE_INSTALL_DATADIR}/HonToEngine"
 )
 
@@ -181,5 +183,18 @@ install(PROGRAMS
     scripts/Remove-LocalDevSigning.ps1
     scripts/New-HonToProject.ps1
     scripts/Build-HonToSdk.ps1
+    scripts/Install-HonToSdk.ps1
+    scripts/Build-HonToInstaller.ps1
     DESTINATION "${CMAKE_INSTALL_BINDIR}"
 )
+
+set(CPACK_PACKAGE_NAME "HonToEngine SDK")
+set(CPACK_PACKAGE_VENDOR "HonTo")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HonTo Engine SDK")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "HonToSDK")
+set(CPACK_PACKAGE_FILE_NAME "HonToEngine-SDK-${PROJECT_VERSION}-win64")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_GENERATOR "ZIP")
+
+include(CPack)
