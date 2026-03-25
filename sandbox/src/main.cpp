@@ -26,12 +26,12 @@ namespace
     constexpr int kWindowGap = 10;
     constexpr int kPlaygroundWindowWidth = 1620;
     constexpr int kPlaygroundWindowHeight = 1080;
-    constexpr int kCodeLabWindowWidth = 960;
-    constexpr int kCodeLabWindowHeight = 720;
+    constexpr int kCodeLabWindowWidth = 1040;
+    constexpr int kCodeLabWindowHeight = 820;
     constexpr int kPlaygroundRenderWidth = 320;
     constexpr int kPlaygroundRenderHeight = 180;
-    constexpr int kCodeLabRenderWidth = 240;
-    constexpr int kCodeLabRenderHeight = 180;
+    constexpr int kCodeLabRenderWidth = 320;
+    constexpr int kCodeLabRenderHeight = 240;
 
     enum class LanguageMode
     {
@@ -1628,16 +1628,16 @@ namespace
         const float panelY = 6.0f;
         const float panelWidth = visible.x - 12.0f;
         const float panelHeight = visible.y - 12.0f;
-        const int gridColumns = 3;
+        const int gridColumns = 4;
         const float gridGapX = 4.0f;
         const float gridGapY = 4.0f;
         const float buttonX = 12.0f;
-        const float buttonY = 34.0f;
+        const float buttonY = 32.0f;
         const float buttonWidth = (visible.x - 24.0f - (gridGapX * static_cast<float>(gridColumns - 1))) / static_cast<float>(gridColumns);
-        const float buttonHeight = 14.0f;
+        const float buttonHeight = 16.0f;
         const int gridRows = static_cast<int>((kDemoEntries.size() + static_cast<std::size_t>(gridColumns) - 1) / static_cast<std::size_t>(gridColumns));
-        const float detailPanelY = buttonY + (static_cast<float>(gridRows) * buttonHeight) + (static_cast<float>(gridRows - 1) * gridGapY) + 8.0f;
-        const float detailPanelHeight = std::max(52.0f, visible.y - detailPanelY - 10.0f);
+        const float detailPanelY = buttonY + (static_cast<float>(gridRows) * buttonHeight) + (static_cast<float>(gridRows - 1) * gridGapY) + 10.0f;
+        const float detailPanelHeight = std::max(112.0f, visible.y - detailPanelY - 10.0f);
 
         stage.hontoFill("lab_panel", panelWidth, panelHeight, honto::hontoRGBA(16, 22, 34))
             .hontoAt(panelX, panelY)
@@ -1656,7 +1656,7 @@ namespace
             .hontoAt(12.0f, 10.0f)
             .hontoLayer(3);
         stage.hontoText("hint", L("Click to run in Playground.", "클릭하면 Playground에서 실행됩니다."), honto::hontoRGBA(182, 198, 224), 1)
-            .hontoAt(12.0f, 20.0f)
+            .hontoAt(12.0f, 22.0f)
             .hontoLayer(3);
 
         std::vector<honto::hontoActor> codeButtons;
@@ -1697,16 +1697,16 @@ namespace
             .hontoAt(18.0f, detailPanelY + 8.0f)
             .hontoLayer(3);
         auto detailDesc = stage.hontoText("detail_desc", "", honto::hontoRGBA(182, 198, 224), 1)
-            .hontoAt(18.0f, detailPanelY + 20.0f)
+            .hontoAt(18.0f, detailPanelY + 26.0f)
             .hontoLayer(3);
         auto detailCodeTitle = stage.hontoText("detail_code_title", "", DemoColor(gSelectedDemo), 1)
-            .hontoAt(18.0f, detailPanelY + 42.0f)
+            .hontoAt(18.0f, detailPanelY + 62.0f)
             .hontoLayer(3);
         auto detailCode = stage.hontoText("detail_code", "", honto::hontoRGBA(255, 236, 162), 1)
-            .hontoAt(18.0f, detailPanelY + 54.0f)
+            .hontoAt(18.0f, detailPanelY + 76.0f)
             .hontoLayer(3);
         auto detailRun = stage.hontoText("detail_run", "", honto::hontoRGBA(132, 255, 226), 1)
-            .hontoAt(18.0f, detailPanelY + detailPanelHeight - 16.0f)
+            .hontoAt(18.0f, detailPanelY + detailPanelHeight - 22.0f)
             .hontoLayer(3);
 
         stage.hontoEveryFrame(

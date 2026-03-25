@@ -155,7 +155,7 @@ To remove the local development certificate again:
 The main sample now opens two windows:
 
 - `honto Playground`: the live demo view on the left, configured at `1620x1080`
-- `honto Code Lab`: the explanation and code-click window on the right, configured at `960x720`
+- `honto Code Lab`: the explanation and code-click window on the right, configured at `1040x820`
 
 Click a code sample in `honto Code Lab` and the matching demo runs in `honto Playground`.
 

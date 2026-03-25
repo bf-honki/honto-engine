@@ -23,7 +23,7 @@
 
 소스 구조를 코드 안 주석 대신 따로 읽고 싶다면 `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`를 보면 됩니다.
 
-현재 샘플게임은 `honto Playground`와 `honto Code Lab` 두 창으로 구성되어 있고, `Code Lab`에서 코드를 마우스로 누르면 `Playground`에서 해당 기능이 바로 실행됩니다. 기본 구성은 왼쪽 실행창 `1620x1080`, 오른쪽 코드창 `960x720`입니다. 상세 설명은 `docs/HONTO_ACADEMY_GUIDE_KO.md`에 정리되어 있습니다.
+현재 샘플게임은 `honto Playground`와 `honto Code Lab` 두 창으로 구성되어 있고, `Code Lab`에서 코드를 마우스로 누르면 `Playground`에서 해당 기능이 바로 실행됩니다. 기본 구성은 왼쪽 실행창 `1620x1080`, 오른쪽 코드창 `1040x820`입니다. 상세 설명은 `docs/HONTO_ACADEMY_GUIDE_KO.md`에 정리되어 있습니다.
 
 ## 샘플 Code Lab 구성
 
