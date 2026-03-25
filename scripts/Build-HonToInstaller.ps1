@@ -60,6 +60,7 @@ $installScript = Join-Path $packageRoot "Install-HonToSdk.ps1"
 $installCmd = Join-Path $packageRoot "install.cmd"
 $sedPath = Join-Path $workingRoot "honto-sdk-installer.sed"
 $installerPath = Join-Path $OutputDir $InstallerName
+$repoInstallerPath = Join-Path $repoRoot $InstallerName
 
 if (Test-Path $workingRoot)
 {
@@ -155,4 +156,7 @@ if ($LASTEXITCODE -ne 0)
     exit $LASTEXITCODE
 }
 
+Copy-Item -Path $installerPath -Destination $repoInstallerPath -Force
+
 Write-Output "Created HonTo SDK installer: $installerPath"
+Write-Output "Copied HonTo SDK installer to repo root: $repoInstallerPath"

@@ -109,6 +109,12 @@ dist\HonToEngine-SDK-Setup.exe
 
 The `Portable` zip is the SDK folder itself. The `Setup` zip is the GitHub-release friendly download that contains the installer exe inside.
 
+For source-repository downloads, the latest generated installer and zips are also copied to the repository root:
+
+- `HonToEngine-SDK-Setup.exe`
+- `HonToEngine-SDK-Setup-0.1.0-win64.zip`
+- `HonToEngine-SDK-Portable-0.1.0-win64.zip`
+
 If the target machine enforces Smart App Control, you can sign generated game executables during the build:
 
 ```powershell

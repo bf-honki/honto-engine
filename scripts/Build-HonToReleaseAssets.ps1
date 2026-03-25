@@ -78,5 +78,14 @@ if (Test-Path $setupZip)
 
 Compress-Archive -Path (Join-Path $setupRoot "*") -DestinationPath $setupZip -CompressionLevel Optimal
 
+$repoPortableZip = Join-Path $repoRoot ([System.IO.Path]::GetFileName($portableZip))
+$repoSetupZip = Join-Path $repoRoot ([System.IO.Path]::GetFileName($setupZip))
+$repoSetupExe = Join-Path $repoRoot "HonToEngine-SDK-Setup.exe"
+
+Copy-Item -Path $portableZip -Destination $repoPortableZip -Force
+Copy-Item -Path $setupZip -Destination $repoSetupZip -Force
+Copy-Item -Path $setupExe -Destination $repoSetupExe -Force
+
 Write-Output "Portable SDK zip: $portableZip"
 Write-Output "Setup zip: $setupZip"
+Write-Output "Copied release assets to repo root."
