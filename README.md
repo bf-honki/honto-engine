@@ -4,6 +4,7 @@
 
 Detailed Korean guide: `docs/HONTO_ENGINE_GUIDE_KO.md`
 Source structure guide: `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`
+Academy lesson guide: `docs/HONTO_ACADEMY_GUIDE_KO.md`
 
 This version now covers the core runtime features most people expect when prototyping a 2D engine:
 
@@ -14,7 +15,7 @@ This version now covers the core runtime features most people expect when protot
 - a lambda-style "easy" API for gravity, tilemaps, collision, sprite-sheet animation, text/UI/buttons, mouse input, audio buses, level files, scene transitions, multiverse-style window travel, runtime window styling, particles, triggers, simple AI, and camera shake
 - keyboard and mouse input
 - level loading from `.honto`, HonTo JSON, and Tiled-style JSON
-- a sandbox game that shows 2D platforming, tile collisions, PNG loading, HUD text/UI, button clicks, JSON/Tiled loading, audio mixer controls, a click-to-paint level editor window, multiverse window travel, and a DOOM-style 2.5D scene with doors, fog, sprites, a weapon overlay, and a minimap
+- a sandbox sample game called `honto Engine Academy` where players move through lesson gates and learn scene setup, input, physics, animation, camera, UI, save/load, and DOOM-style 2.5D level by level
 - installable CMake package support so other developers can use the engine on a different machine with `find_package(HonToEngine CONFIG REQUIRED)`
 - a reusable starter template and standalone quickstart example for external game projects
 
@@ -143,6 +144,20 @@ To remove the local development certificate again:
 - `examples/quickstart`: standalone example project for installed SDK usage
 - `templates/HonToStarter`: starter project for external users
 - `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`: separate source explanation file
+
+## Sample Academy
+
+The main sample is now a playable tutorial flow called `honto Engine Academy`.
+
+- `Level 1`: stage, actor, and movement basics
+- `Level 2`: gravity, jumping, and tile collisions
+- `Level 3`: frame animation and particle bursts
+- `Level 4`: camera follow, triggers, and simple AI
+- `Level 5`: buttons, bars, mouse input, and audio
+- `Level 6`: runtime tile editing plus level save/load
+- `Level 7`: DOOM-style 2.5D raycasting from a 2D map
+
+The Korean lesson-by-lesson walkthrough lives in `docs/HONTO_ACADEMY_GUIDE_KO.md`.
 
 ## Easy code-first API
 

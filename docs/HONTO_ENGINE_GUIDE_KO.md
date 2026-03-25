@@ -23,6 +23,31 @@
 
 소스 구조를 코드 안 주석 대신 따로 읽고 싶다면 `docs/HONTO_ENGINE_SOURCE_GUIDE_KO.md`를 보면 됩니다.
 
+현재 샘플게임은 `honto Engine Academy`로 구성되어 있고, 허브에서 레벨을 하나씩 열어가며 각 엔진 기능을 실제 플레이로 익히게 되어 있습니다. 레벨별 상세 설명은 `docs/HONTO_ACADEMY_GUIDE_KO.md`에 정리되어 있습니다.
+
+## 샘플 Academy 레벨
+
+1. `LEVEL 1 STAGE AND ACTOR`
+액터를 만들고, 이동시키고, 목표와 충돌하는 가장 기본적인 장면 구성을 배웁니다.
+
+2. `LEVEL 2 PHYSICS AND TILEMAP`
+중력, 점프, 타일맵, 맵 충돌을 이용해 플랫폼 동작을 만듭니다.
+
+3. `LEVEL 3 ANIMATION AND PARTICLES`
+프레임 애니메이션과 파티클 이펙트를 이용해 캐릭터와 오브젝트를 더 살아 있게 만듭니다.
+
+4. `LEVEL 4 CAMERA, TRIGGER, AI`
+카메라 따라가기, 트리거 존, 간단한 순찰/추적 AI를 레벨 목표와 함께 배웁니다.
+
+5. `LEVEL 5 UI, BUTTON, AUDIO`
+버튼, 진행 바, 마우스 입력, 오디오 버스를 이용한 상호작용 UI를 배웁니다.
+
+6. `LEVEL 6 LEVEL, SAVE, LOAD`
+런타임에서 타일을 바꾸고, 레벨 파일을 저장하고, 다시 불러오는 흐름을 익힙니다.
+
+7. `LEVEL 7 2.5D RAYCAST`
+2D 맵 데이터를 이용해 둠 스타일 2.5D 화면을 만드는 흐름을 체험합니다.
+
 ## 현재 가능한 것
 
 ### 0. 다른 컴퓨터 사용자가 엔진을 가져가서 자기 게임 만들기

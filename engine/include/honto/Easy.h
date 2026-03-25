@@ -2774,6 +2774,36 @@ namespace HonTo
             return *this;
         }
 
+        Vec2 PlayerPosition() const
+        {
+            if (const auto view = View())
+            {
+                return view->GetPlayerPosition();
+            }
+
+            return {};
+        }
+
+        float PlayerAngle() const
+        {
+            if (const auto view = View())
+            {
+                return view->GetPlayerAngle();
+            }
+
+            return 0.0f;
+        }
+
+        Vec2 hontoPlayerPosition() const
+        {
+            return PlayerPosition();
+        }
+
+        float hontoPlayerAngle() const
+        {
+            return PlayerAngle();
+        }
+
         RaycastActor& hontoViewDegrees(float degrees)
         {
             if (const auto view = View())
